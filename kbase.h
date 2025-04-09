@@ -14,6 +14,8 @@
 #include <string>
 #include "kerrorcode.h"
 #include "kmacro.h"
+#include "kprojectio.h"
+#include "../kcommonhpp/ktime.h"
 #include <opencv2/opencv.hpp>
 #include <QString>
 #include <QSettings>
@@ -22,6 +24,29 @@
 #include <QImage>
 
 using namespace std;
+
+/// 超声图像的像素转超声图像的物理尺寸系数
+const double g_pixel_to_ultra_physical_dimension_ratio_x = 0.03;
+
+/**
+ * @brief Structure for camera intrinsic parameters
+ */
+typedef struct {
+    float   fx;      ///< Focal length in x direction
+    float   fy;      ///< Focal length in y direction
+    float   cx;      ///< Optical center abscissa
+    float   cy;      ///< Optical center ordinate
+    int16_t width;   ///< Image width
+    int16_t height;  ///< Image height
+} CameraIntrinsic, camera_intrinsic;
+
+/**
+ * @brief Structure for camera parameters
+ */
+typedef struct {
+    CameraIntrinsic  depthIntrinsic;   ///< Depth camera internal parameters
+    CameraIntrinsic  rgbIntrinsic;     ///< Color camera internal parameters
+} CameraParam, camera_param;
 
 
 /// 用户信息
@@ -56,6 +81,40 @@ public:
     }
 };
 
+/// 采血记录
+struct DrawingRecord
+{
+public:
+    int drawing_id = 0;
+    string user_name = "";  //< 登录名
+    string drawer_num = ""; //< 采血者二维码
+    int64 drawing_start_time = 0;      //< 采血开始时间（压脉开始时间）
+    int64 drawing_over_time = 0;       //< 采血结束时间
+    int64 prepare_ok_time = 0;         //< 准备开始时间
+    int64 puncture_finished_time = 0;  //< 穿刺完成时间
+    int64 exit_needle_time = 0;        //< 退针时间
+    bool  is_completed       = false;  //< 采血是否完成
+    bool is_ir_ok = false; // 红外是否识别有结果
+    bool is_ultra_ok = false; // 超声是否识别有结果
+    float needle_y = -1; // 血管深度
+    float blood_r = -1; // 血管半径
+    string cancel_reason = ""; // 自动放弃原因
+public:
+    DrawingRecord()
+    {
+    }
+    inline string ToStr() const
+    {
+        string ss("DrawingRecord:\n");
+        ss = ss + "user_name:"          + user_name + "\n";
+        ss = ss + "drawer_num:"         + drawer_num + "\n";
+        ss = ss + "drawing_start_time:" + KTime<>::GetDateTime(drawing_start_time) + "\n";
+        ss = ss + "drawing_over_time:"  + KTime<>::GetDateTime(drawing_over_time) + "\n";
+        ss = ss + "is_completed:"       + to_string(is_completed) + "\n";
+        return ss;
+    }
+};
+
 struct NIRFrame
 {
     cv::Mat mat_color;
@@ -66,7 +125,8 @@ struct NIRFrame
 struct NIRCaptureFrame
 {
     cv::Mat mat_depth;
-    cv::Mat mat_infrared;    
+    cv::Mat mat_infrared;
+    cv::Mat mat_color;
     cv::Mat mat_d2c_depth;
     cv::Mat mat_d2c_color;
 };
@@ -144,33 +204,33 @@ inline static map<int, string> g_modbus_command_code{
     {MOD_CMD_ID_PUNC_BOARD_NAME,                       "02 03 50 02 00 05"}, // 35 3A
     {MOD_CMD_ID_PUNC_PRESSURE1,                        "02 03 40 01 00 02"}, // 80 38
     {MOD_CMD_ID_PUNC_PRESSURE2,                        "02 03 40 02 00 02"}, // 70 38
-    {MOD_CMD_ID_PUNC_MOTOR1_MODULE_ENABLE,             "02 06 10 01 00 01"}, // 1D 39
-    {MOD_CMD_ID_PUNC_MOTOR1_MODULE_DISABLE,            "02 06 10 01 00 00"}, // DC F9
-    {MOD_CMD_ID_PUNC_MOTOR1_CHANGE_MODE,               "02 06 10 02 00 00"}, // 2C F9
-    {MOD_CMD_ID_PUNC_MOTOR1_CHANGE_CLEAR,              "02 06 10 23 00 00"}, //  7C F3
-    {MOD_CMD_ID_PUNC_MOTOR1_CHANGE_ENABLE,             "02 06 10 03 00 01"}, // BC F9
-    {MOD_CMD_ID_PUNC_MOTOR1_CHANGE_DISABLE,            "02 06 10 03 00 00"}, // 7D 39
-    {MOD_CMD_ID_PUNC_MOTOR1_CHANGE_STATUS,             "02 03 10 23 00 01"}, // 71 33
-    {MOD_CMD_ID_PUNC_MOTOR1_MODULE_SET_POSE,           "02 10 10 08 00 02 04 00 00 00 00"}, // 30 8D
-    {MOD_CMD_ID_PUNC_MOTOR1_MODULE_GET_POSE,           "02 03 10 20 00 02"}, // C1 32
-    {MOD_CMD_ID_PUNC_MOTOR2_MODULE_ENABLE,             "02 06 20 01 00 01"}, // 12 39
-    {MOD_CMD_ID_PUNC_MOTOR2_MODULE_DISABLE,            "02 06 20 01 00 00"}, // D3 F9
-    {MOD_CMD_ID_PUNC_MOTOR2_CHANGE_MODE,               "02 06 20 02 00 00"}, // 23 F9
-    {MOD_CMD_ID_PUNC_MOTOR2_CHANGE_CLEAR,              "02 06 20 23 00 00"}, // 73 F3
-    {MOD_CMD_ID_PUNC_MOTOR2_CHANGE_ENABLE,             "02 06 20 03 00 01"}, // B3 F9
-    {MOD_CMD_ID_PUNC_MOTOR2_CHANGE_DISABLE,            "02 06 20 03 00 00"}, // 72 39
-    {MOD_CMD_ID_PUNC_MOTOR2_CHANGE_STATUS,             "02 03 20 23 00 01"}, // 7E 33
-    {MOD_CMD_ID_PUNC_MOTOR2_MODULE_SET_POSE,           "02 10 20 08 00 02 04 00 00 00 00"}, // 64 8C
-    {MOD_CMD_ID_PUNC_MOTOR2_MODULE_GET_POSE,           "02 03 20 20 00 02"}, // CE 32
-    {MOD_CMD_ID_PUNC_MOTOR3_MODULE_ENABLE,             "02 06 30 01 00 01"}, // 16 F9
-    {MOD_CMD_ID_PUNC_MOTOR3_MODULE_DISABLE,            "02 06 30 01 00 00"}, // D7 39
-    {MOD_CMD_ID_PUNC_MOTOR3_CHANGE_MODE,               "02 06 30 02 00 00"}, // 27 39
-    {MOD_CMD_ID_PUNC_MOTOR3_CHANGE_CLEAR,              "02 06 30 23 00 00"}, // 77 33
-    {MOD_CMD_ID_PUNC_MOTOR3_CHANGE_ENABLE,             "02 06 30 03 00 01"}, // B7 39
-    {MOD_CMD_ID_PUNC_MOTOR3_CHANGE_DISABLE,            "02 06 30 03 00 00"}, // 76 F9
-    {MOD_CMD_ID_PUNC_MOTOR3_CHANGE_STATUS,             "02 03 30 23 00 01"}, // 7A F3
-    {MOD_CMD_ID_PUNC_MOTOR3_MODULE_SET_POSE,           "02 10 30 08 00 02 04 00 00 00 00"}, // A9 4C
-    {MOD_CMD_ID_PUNC_MOTOR3_MODULE_GET_POSE,           "02 03 30 20 00 02"}, // CA F2
+    {MOD_CMD_ID_PUNC_MOTOR0_MODULE_ENABLE,             "02 06 10 01 00 01"}, // 1D 39
+    {MOD_CMD_ID_PUNC_MOTOR0_MODULE_DISABLE,            "02 06 10 01 00 00"}, // DC F9
+    {MOD_CMD_ID_PUNC_MOTOR0_HOMING_MODE,               "02 06 10 02 00 00"}, // 2C F9
+    {MOD_CMD_ID_PUNC_MOTOR0_HOMING_CLEAR,              "02 06 10 23 00 00"}, //  7C F3
+    {MOD_CMD_ID_PUNC_MOTOR0_HOMING_ENABLE,             "02 06 10 03 00 01"}, // BC F9
+    {MOD_CMD_ID_PUNC_MOTOR0_HOMING_DISABLE,            "02 06 10 03 00 00"}, // 7D 39
+    {MOD_CMD_ID_PUNC_MOTOR0_HOMING_STATUS,             "02 03 10 23 00 01"}, // 71 33
+    {MOD_CMD_ID_PUNC_MOTOR0_MODULE_SET_POSE,           "02 10 10 08 00 02 04 00 00 00 00"}, // 30 8D
+    {MOD_CMD_ID_PUNC_MOTOR0_MODULE_GET_POSE,           "02 03 10 20 00 02"}, // C1 32
+    {MOD_CMD_ID_PUNC_MOTOR1_MODULE_ENABLE,             "02 06 20 01 00 01"}, // 12 39
+    {MOD_CMD_ID_PUNC_MOTOR1_MODULE_DISABLE,            "02 06 20 01 00 00"}, // D3 F9
+    {MOD_CMD_ID_PUNC_MOTOR1_HOMING_MODE,               "02 06 20 02 00 00"}, // 23 F9
+    {MOD_CMD_ID_PUNC_MOTOR1_HOMING_CLEAR,              "02 06 20 23 00 00"}, // 73 F3
+    {MOD_CMD_ID_PUNC_MOTOR1_HOMING_ENABLE,             "02 06 20 03 00 01"}, // B3 F9
+    {MOD_CMD_ID_PUNC_MOTOR1_HOMING_DISABLE,            "02 06 20 03 00 00"}, // 72 39
+    {MOD_CMD_ID_PUNC_MOTOR1_HOMING_STATUS,             "02 03 20 23 00 01"}, // 7E 33
+    {MOD_CMD_ID_PUNC_MOTOR1_MODULE_SET_POSE,           "02 10 20 08 00 02 04 00 00 00 00"}, // 64 8C
+    {MOD_CMD_ID_PUNC_MOTOR1_MODULE_GET_POSE,           "02 03 20 20 00 02"}, // CE 32
+    {MOD_CMD_ID_PUNC_MOTOR2_MODULE_ENABLE,             "02 06 30 01 00 01"}, // 16 F9
+    {MOD_CMD_ID_PUNC_MOTOR2_MODULE_DISABLE,            "02 06 30 01 00 00"}, // D7 39
+    {MOD_CMD_ID_PUNC_MOTOR2_HOMING_MODE,               "02 06 30 02 00 00"}, // 27 39
+    {MOD_CMD_ID_PUNC_MOTOR2_HOMING_CLEAR,              "02 06 30 23 00 00"}, // 77 33
+    {MOD_CMD_ID_PUNC_MOTOR2_HOMING_ENABLE,             "02 06 30 03 00 01"}, // B7 39
+    {MOD_CMD_ID_PUNC_MOTOR2_HOMING_DISABLE,            "02 06 30 03 00 00"}, // 76 F9
+    {MOD_CMD_ID_PUNC_MOTOR2_HOMING_STATUS,             "02 03 30 23 00 01"}, // 7A F3
+    {MOD_CMD_ID_PUNC_MOTOR2_MODULE_SET_POSE,           "02 10 30 08 00 02 04 00 00 00 00"}, // A9 4C
+    {MOD_CMD_ID_PUNC_MOTOR2_MODULE_GET_POSE,           "02 03 30 20 00 02"}, // CA F2
     {MOD_CMD_ID_PUNC_INFRARED_FILL_LIGHT_OPEN,         "02 06 70 01 00 01"}, // 03 39
     {MOD_CMD_ID_PUNC_INFRARED_FILL_LIGHT_CLOSE,        "02 06 70 01 00 00"}, // C2 F9
     {MOD_CMD_ID_PUNC_INFRARED_FILL_LIGHT_BRIGHT_0,     "02 06 70 02 00 00"}, // 32 F9
@@ -185,18 +245,20 @@ inline static map<int, string> g_modbus_command_code{
     {MOD_CMD_ID_PUNC_CLAMPING_MOTOR_CLOSE,             "02 06 60 02 00 02"}, // B7 F8
     {MOD_CMD_ID_REST_VERSION,                          "03 03 30 01 00 05"}, // DA EB
     {MOD_CMD_ID_REST_BOARD_NAME,                       "03 03 30 02 00 05"}, // 2A EB
-    {MOD_CMD_ID_REST_MOTOR1_MODULE_ENABLE,             "03 06 10 00 00 01"}, // 4D 28
-    {MOD_CMD_ID_REST_MOTOR1_CHANGE_ENABLE,             "03 06 10 01 00 01"}, // 1C E8
-    {MOD_CMD_ID_REST_MOTOR1_CHANGE_STATUS,             "03 03 10 20 00 01"}, // 80 E2
-    {MOD_CMD_ID_REST_MOTOR1_MODULE_LOOSEN_VALUE,       "03 10 10 03 00 02 04 42 C8 00 00"}, // E0 44
-    {MOD_CMD_ID_REST_MOTOR1_MODULE_TIGHTEN_VALUE,      "03 10 10 04 00 02 04 43 7A 00 00"}, // 00 79
-    {MOD_CMD_ID_REST_MOTOR1_MODULE_LOOSEN,             "03 06 10 02 00 01"}, // EC E8
-    {MOD_CMD_ID_REST_MOTOR1_MODULE_TIGHTEN,            "03 06 10 02 00 02"}, // AC E9
-    {MOD_CMD_ID_REST_MOTOR2_MODULE_ENABLE,             "03 06 20 00 00 01"}, // 42 28
-    {MOD_CMD_ID_REST_MOTOR2_CHANGE_ENABLE,             "03 06 20 01 00 01"}, // 13 E8
-    {MOD_CMD_ID_REST_MOTOR2_CHANGE_STATUS,             "03 03 20 20 00 01"}, // 8F E2
-    {MOD_CMD_ID_REST_MOTOR2_MODULE_PRESET_POS,         "03 10 20 02 00 02 04 41 20 00 00"}, // F5 F9
-    {MOD_CMD_ID_REST_MOTOR2_MODULE_GET_POS,            "03 03 20 24 00 02"}, // 8E 22
+    {MOD_CMD_ID_REST_MOTOR0_MODULE_ENABLE,             "03 06 10 00 00 01"}, // 4D 28
+    {MOD_CMD_ID_REST_MOTOR0_MODULE_DISABLE,            "03 06 10 00 00 00"}, // 8C E8
+    {MOD_CMD_ID_REST_MOTOR0_HOMING_ENABLE,             "03 06 10 01 00 01"}, // 1C E8
+    {MOD_CMD_ID_REST_MOTOR0_HOMING_STATUS,             "03 03 10 20 00 01"}, // 80 E2
+    {MOD_CMD_ID_REST_MOTOR0_MODULE_LOOSEN_VALUE,       "03 10 10 03 00 02 04 42 C8 00 00"}, // E0 44
+    {MOD_CMD_ID_REST_MOTOR0_MODULE_TIGHTEN_VALUE,      "03 10 10 04 00 02 04 43 7A 00 00"}, // 00 79
+    {MOD_CMD_ID_REST_MOTOR0_MODULE_LOOSEN,             "03 06 10 02 00 01"}, // EC E8
+    {MOD_CMD_ID_REST_MOTOR0_MODULE_TIGHTEN,            "03 06 10 02 00 02"}, // AC E9
+    {MOD_CMD_ID_REST_MOTOR1_MODULE_ENABLE,             "03 06 20 00 00 01"}, // 42 28
+    {MOD_CMD_ID_REST_MOTOR1_MODULE_DISABLE,            "03 06 20 00 00 00"}, // 83 E8
+    {MOD_CMD_ID_REST_MOTOR1_HOMING_ENABLE,             "03 06 20 01 00 01"}, // 13 E8
+    {MOD_CMD_ID_REST_MOTOR1_HOMING_STATUS,             "03 03 20 20 00 01"}, // 8F E2
+    {MOD_CMD_ID_REST_MOTOR1_MODULE_PRESET_POS,         "03 10 20 02 00 02 04 41 20 00 00"}, // F5 F9
+    {MOD_CMD_ID_REST_MOTOR1_MODULE_GET_POS,            "03 03 20 24 00 02"}, // 8E 22
     {MOD_CMD_ID_KEY_POWER_GET_STATUS,                  "04 03 10 00 00"}, // D4 41
     {MOD_CMD_ID_KEY_POWER_SET_STATUS,                  "04 06 10 00 01"}, // 8B C6
     {MOD_CMD_ID_KEY_STOP_GET_STATUS,                   ""}, //
@@ -207,8 +269,8 @@ inline static map<int, string> g_modbus_command_code{
     {MOD_CMD_ID_KEY_LOOSEN_SET_STATUS,                 ""}, //
     {MOD_CMD_ID_KEY_REFUND_GET_STATUS,                 ""}, //
     {MOD_CMD_ID_KEY_REFUND_SET_STATUS,                 ""}, //
-    {MOD_CMD_ID_KEY_URGENTSTOP_GET_STATUS,             ""}, //
-    {MOD_CMD_ID_KEY_URGENTSTOP_SET_STATUS,             ""}, // 8B C6
+    {MOD_CMD_ID_KEY_URGENTSTOP_GET_STATUS,             "04 03 0C 00 00"}, // 35 D4  //< 急停状态
+    {MOD_CMD_ID_KEY_URGENTSTOP_SET_STATUS,             "04 06 0C 00 01"}, // 8B C6  //< 急停按下/抬起
     {MOD_CMD_ID_KEY_ULTR_POWER_GET_STATUS,             "04 03 01 00 00"}, // 84 44  //< 超声开启状态
     {MOD_CMD_ID_KEY_ULTR_POWER_SET_STATUS,             "04 06 01 00 01"}, // 89 CA  //< 超声开启/关闭
     {MOD_CMD_ID_KEY_PUNC_POWER_GET_STATUS,             "04 03 02 00 00"}, // 74 44  //< 穿刺开启状态
@@ -269,3 +331,19 @@ inline static map<int, int> g_physicalkey_id_app_to_band{
     {PHYSICALKEY_ID_POWER,                         0x0b},
     {PHYSICALKEY_ID_URGENTSTOP,                    0x0c}
 };
+
+/**
+ * @brief blood_center
+ * @param blood_depth 单位是像素
+ * @return 血管深度 单位是像素
+ */
+inline int blood_center(int blood_depth)
+{
+    int blood_center_compensation = 0;
+    int blood_center_compensation_index = (blood_depth * 0.03 - ProjectIO::instance().getConfig().coupling_thickness - 0.2) / 0.2;
+    if(blood_center_compensation_index >= 0 && blood_center_compensation_index < ProjectIO::instance().getConfig().Add_Cent.size())
+    {
+        blood_center_compensation = ProjectIO::instance().getConfig().Add_Cent[blood_center_compensation_index];
+    }
+    return ProjectIO::instance().getConfig().blood_center - blood_center_compensation;
+}

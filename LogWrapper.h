@@ -51,49 +51,74 @@ using namespace spdlog;
 //static map<string, string> g_log_file_paths;
 //map<string, std::shared_ptr<spdlog::logger>> g_loggers;
 
-inline void WriteLogHeader(const string& loggername, const filename_t& filename, std::FILE* file_stream, const string& log_pattern);
-
-/**  */
-inline std::shared_ptr<spdlog::logger> InitLog(const string& root_log_dir, spdlog::level::level_enum log_level)
+class KLog
 {
-	string default_log_path;
 
-	string date = KTime<>::GetDate(KTime<>::GetNowDateTime());
-	string time = KTime<>::GetTime(KTime<>::GetNowDateTime());
-	default_log_path = root_log_dir + "/" + date + "/" + date + "-" + time;
+public:
+    /**  */
+    inline static std::shared_ptr<spdlog::logger> InitLog(const string& root_log_dir, spdlog::level::level_enum log_level)
+    {
+        m_default_log_level = log_level;
+        string date = KTime<>::GetDate(KTime<>::GetNowDateTime());
+        string time = KTime<>::GetTime(KTime<>::GetNowDateTime());
+        m_default_log_dir = root_log_dir + "/" + date + "/" + date + "-" + time;
+        KFile::CreateDir(m_default_log_dir);
+        string default_log_path = m_default_log_dir + "/" + GetProcessName() + ".log";
+        const string  log_pattern("[%i-%t-%Y-%m-%d %H:%M:%S.%e] [%l] %v");
+        SpdlogInit();
+        bool is_async = true;
+        bool is_daily = true;
+        std::shared_ptr<spdlog::logger>  default_logger = CreateLogger("default_logger", true, true, is_async, is_daily, false, default_log_path, log_level, log_pattern, [log_pattern](const filename_t& filename, std::FILE* file_stream) {WriteLogHeader("default_logger", filename, file_stream, log_pattern); });
+        //spdlog::set([](const std::string &msg) { spdlog::get("console")->error("*** LOGGER ERROR ***: {}", msg); });
+        //spdlog::get("console")->info("some invalid message to trigger an error {}{}{}{}", 3);
+        return default_logger;
+    }
 
-	KFile::CreateDir(default_log_path);
+    inline static std::shared_ptr<spdlog::logger>  SwitchLogFile(const std::string& log_sub_folder_name)
+    {
+        string date = KTime<>::GetDate(KTime<>::GetNowDateTime());
+        string time = KTime<>::GetTime(KTime<>::GetNowDateTime());
+        string new_log_dir = m_default_log_dir + "/" + date + "-" + time + "-" + log_sub_folder_name;
+        KFile::CreateDir(new_log_dir);
+        string new_log_path = new_log_dir + "/" + GetProcessName() + ".log";
+        // 假设 logger 名字叫 "file_logger"
+        spdlog::drop("default_logger");  // 删除旧的 logger
+        FlushLog();
+        // 创建新的 logger，绑定新的日志文件
+        const string  log_pattern("[%i-%t-%Y-%m-%d %H:%M:%S.%e] [%l] %v");
+        bool is_async = true;
+        bool is_daily = true;
+        std::shared_ptr<spdlog::logger>  new_default_logger = CreateLogger("default_logger", true, true, is_async, is_daily, false, utf8tolocal(new_log_path), m_default_log_level, log_pattern, [log_pattern](const filename_t& filename, std::FILE* file_stream) {WriteLogHeader("default_logger", filename, file_stream, log_pattern); });
+        //spdlog::set([](const std::string &msg) { spdlog::get("console")->error("*** LOGGER ERROR ***: {}", msg); });
+        //spdlog::get("console")->info("some invalid message to trigger an error {}{}{}{}", 3);
+        spdlog::set_default_logger(new_default_logger);
+        spdlog::info("日志文件已切换到: {}", new_log_path);
+        return new_default_logger;
 
-	default_log_path += "/" + GetProcessName() + ".log";
+        //auto new_logger = spdlog::basic_logger_mt("file_logger", new_log_path);
+        //spdlog::set_default_logger(new_logger);
+        //spdlog::info("日志文件已切换到: {}", new_log_path);
+        //return new_logger;
+    }
 
-	const string  log_pattern("[%i-%t-%Y-%m-%d %H:%M:%S.%e] [%l] %v");
+    inline static void FlushLog()
+    {
+        DropLog();
+    }
 
-	SpdlogInit();
+    inline static void WriteLogHeader(const string& loggername, const filename_t& filename, std::FILE* file_stream, const string& log_pattern)
+    {
+        char head_buf[1000] = { 0 };
+        sprintf(head_buf,
+                "log header:logger name:%s log filename:%s log pattern:%s\n"
+                , loggername.c_str(), localtoutf8(filename).c_str(), log_pattern.c_str());
+        fputs(head_buf, file_stream);
+        fflush(file_stream);
+    }
 
-	bool is_async = true;
-	bool is_daily = true;
-	std::shared_ptr<spdlog::logger>  default_logger = CreateLogger("default_logger", true, true, is_async, is_daily, false, default_log_path, log_level, log_pattern, [log_pattern](const filename_t& filename, std::FILE* file_stream) {WriteLogHeader("default_logger", filename, file_stream, log_pattern); });
-
-	//spdlog::set([](const std::string &msg) { spdlog::get("console")->error("*** LOGGER ERROR ***: {}", msg); });
-	//spdlog::get("console")->info("some invalid message to trigger an error {}{}{}{}", 3);
-
-	return default_logger;
-}
-
-inline void FlushLog()
-{
-	DropLog();
-}
-
-inline void WriteLogHeader(const string& loggername, const filename_t& filename, std::FILE* file_stream, const string& log_pattern)
-{
-	char head_buf[1000] = { 0 };
-	sprintf(head_buf,
-		"log header:logger name:%s log filename:%s log pattern:%s\n"
-		, loggername.c_str(), filename.c_str(), log_pattern.c_str());
-	fputs(head_buf, file_stream);
-	fflush(file_stream);
-}
+    inline static string m_default_log_dir;
+    inline static spdlog::level::level_enum m_default_log_level = spdlog::level::level_enum::trace;
+};
 
 #endif // LOG_WRAPPER_H
 

@@ -13,6 +13,15 @@
 #include <string>
 using namespace std;
 
+static const string red_border_style1 =
+    "QWidget{border:0px solid red;}"
+    ;
+
+static const string red_border_style =
+    "QPushButton{background-color: transparent;}"
+    //"QPushButton{border:1px solid red;}"
+    ;
+
 static const string widget_style1 =
 "QWidget{background-color: blue;padding:0px;margin:0px;}"
 "QWidget{border:1px solid green;}"
@@ -248,4 +257,12 @@ static const string transparent_style =
     ;
 static const string boder_style =
     "background-color:transparent; border:3px solid red;padding:0px;margin:0px;"
+    ;
+static const string lineedit_style =
+    "QLineEdit { border: 2px solid #5A9; background-color: #F3F3F3; border-radius: 5px; padding: 5px; }"
+    "QLineEdit { font-size: 14px; font-family: Arial; color: #333; }"
+    "QLineEdit { qproperty-placeholderTextColor: #999; }"
+    "QLineEdit { border: 2px solid #CCC; background-color: #FFF; }"
+    "QLineEdit:focus { border: 2px solid #0078D7; background-color: #FFFFFF; }"
+    "QLineEdit[readOnly=\"true\"] { background-color: #EAEAEA; color: #666; border: 1px solid #CCC; }"
     ;

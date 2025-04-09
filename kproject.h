@@ -21,6 +21,7 @@
 #include "kprojectio.h"
 #include "kprojectfunction.h"
 #include "KSerialPort.h"
+#include "kmodbusio.h"
 
 #include <opencv2/opencv.hpp>
 

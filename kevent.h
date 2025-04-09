@@ -185,7 +185,7 @@ struct DeviceOperaEventParam : public DeviceEventParam
 /// 设备错误事件
 struct DeviceErrorEventParam : public DeviceEventParam
 {
-    int error_level = 0;             // 错误等级
+    //int error_level = 0;             // 错误等级
     int error_code = 0;              // 错误码
     bool error_cleared = false;      // 错误是否清除
     DeviceErrorEventParam()
@@ -200,7 +200,7 @@ struct DeviceErrorEventParam : public DeviceEventParam
     virtual string EventStr() const  override
     {
         return DeviceEventParam::EventStr()
-               + "\n, " + ErrorLevelStr(error_level)
+               //+ "\n, " + ErrorLevelStr(error_level)
                + "\n, " + ErrorCodeStr(error_code)
                + "\n, error_cleared:" + to_string(error_cleared)
             ;

@@ -34,10 +34,54 @@ struct ConfigFile
     string puncture_com_port;        //< 穿刺串口号
     string armrest_com_port;         //< 压脉串口号
     string physicalkey_com_port;     //< 物理按键串口号
+    string qr_scan_com_port;         //< 二维码扫码枪串口号，没指定则使用PID和VID自动匹配
     int tighten_strength = 400;      //< 压脉力度
     int blood_center = 250;          //< 血管中心
     float contact_score = 1.0;       //< 贴合系数
     float coupling_thickness = 2.0;  //< 耦合卡扣厚度
+    int  exposure = 4000;            //< 奥比中光摄像头曝光度
+    int  gain = 2000;                //< 奥比中光摄像头增益
+    int  laser_energy = 1;           //< 激光能级
+    float sample_pos = 0.7;          //< 采样位置 工装用0.5，采血用0.7
+    int valid_circle_num = 10;       //< 超声可信度预值
+    bool simulation = false;         //< 是否用仿体
+    double init_dianji2 = 2.15;      //< 电机1的初始角度(编码器为0时的电机2的测量角度)；
+    double add_dianj1   = -2.5;      //< 电机0到超声截面的补偿量
+    double add_dianji3  = 4.1;       //< 电机2到超声目标深度的补偿量；
+    double add_dianj1_15  = 0;
+    double add_dianji3_15 = 0;
+    double safeangle      = 15;
+    //皮下1.5mm到超声10.89
+    double add_dianj1_89  = 0;
+    double add_dianji3_89 = 0;
+    //超声10.89到14.7
+    double add_dianj1_47  = 0;
+    double add_dianji3_47 = 0;
+    //14.7到16
+    double add_dianj1_16  = 0;
+    double add_dianji3_16 = 0;
+    double min_blood_depth = 8.0;     //< 血管深度小于该值，入针角度太小，不适合穿刺
+    float  min_blood_diameter = 2.0;  //< 血管直径小于该值，不适合穿刺，筛查用
+    float  min_blood_radius = 0.6;    //< 血管半径小于该值，不适合穿刺, 超声用
+    double punc_sapce_double_mm = 50;     //< 进针空间
+    double white_area_min = 80;  //< 穿刺模块标定针尖白点面积最小值
+    double white_area_max = 500;  //< 穿刺模块标定针尖白点面积最大值
+    double puncture_precision = 15; //< 穿刺精度，期望点和实际点的距离
+    int  adjust_deg = 25;  //< 需要调整探头的穿刺角度
+    double AdjustAngle =  2.0;   //< 当左右评分相差超过0.25时，机械绕工具坐标旋转的角度，默认值为2.0；
+    double coefficient_z = 5.0;  //< 当机械臂旋转角度修正左右评分时，机械臂向下步进距离的比例系数，默认值为5.0
+    double deflection_deg = 5; //< 贴合前，探头的偏转角度，防止穿刺机构碰撞前臂
+    double deflection_deg_2 = 6; //< 贴花前，防止穿刺机构碰撞上臂
+    double x_offset     = 4;  //< 血管偏移4毫米 放弃穿刺
+    bool ir_is_real = false; //< 红外识别血管，显示图像是否实时，默认不用实时
+    bool is_draw_blood_circle = false; //< 是否绘画血管的红色圆圈和绿色的针的x坐标
+    double robotic_arm_speed = 0.1;  //< 机械臂速度
+    bool   is_puncture_x_homing = false;  // 穿刺模块第一个电机到0位是否找零
+    string ultra_host_wifi_name = "H3L221101"; //< 超声主机的wifi热点名字，只写全名的前面几个字符
+    float US_PROBE_LR_DEPTH_MM = 6.0f; //< 探头长轴深度差最大值
+    float US_PROBE_FB_DEPTH_MM = 1.0f; //< 探头短轴深度差最大值
+    string ultra_app_name = "凯瑞医疗"; //< 超声app的名字
+    string his_ip = "127.0.0.1"; //< 服务器ip
     bool punc_ui  = false; //< 模块测试
     bool rest_ui  = false; //< 模块测试
     bool key_ui   = false; //< 模块测试
@@ -51,6 +95,14 @@ struct ConfigFile
     std::array<float, 6>  camera_point = {0};   //< 拍照点
     std::array<float, 6>  lose_point   = {0};   //< 丢针点
     std::array<float, 6>  change_point = {0};   //< 换针点
+    std::array<float, 16> t_uc         = { -1,   0,  0,  35.82,
+                                            0,  -1,  0, -61.70,
+                                            0,   0,  1, -47.19,
+                                            0,   0,  0,  1};   //< 手眼坐标
+    std::vector<double>   Add_Dianj1_2 = std::vector<double>(40, 0);  //< 自动标定后进针电机0的补偿
+    std::vector<double>   Add_Dianj3_2 = std::vector<double>(40, 0);  //< 自动标定后进针电机2的补偿
+    std::vector<double>   Add_Cent     = std::vector<double>(40, 0);  //< 自动标定中间线的补偿
+    std::vector<int>      break_time;                                 //< 加速寿命试验
 
 #if 0
 public:
@@ -136,6 +188,46 @@ public:
         , blood_center
         , contact_score
         , coupling_thickness
+        , exposure
+        , gain
+        , laser_energy
+        , sample_pos
+        , valid_circle_num
+        , simulation
+        , init_dianji2
+        , add_dianj1
+        , add_dianji3
+        , add_dianj1_15
+        , add_dianji3_15
+        , safeangle
+        , add_dianj1_89
+        , add_dianji3_89
+        , add_dianj1_47
+        , add_dianji3_47
+        , add_dianj1_16
+        , add_dianji3_16
+        , min_blood_depth
+        , min_blood_diameter
+        , min_blood_radius
+        , punc_sapce_double_mm
+        , white_area_min
+        , white_area_max
+        , puncture_precision
+        , adjust_deg
+        , AdjustAngle
+        , coefficient_z
+        , x_offset
+        , deflection_deg
+        , deflection_deg_2
+        , ir_is_real
+        , is_draw_blood_circle
+        , robotic_arm_speed
+        , is_puncture_x_homing
+        , ultra_host_wifi_name
+        , US_PROBE_LR_DEPTH_MM
+        , US_PROBE_FB_DEPTH_MM
+        , ultra_app_name
+        , his_ip
         , punc_ui
         , rest_ui
         , key_ui
@@ -147,6 +239,11 @@ public:
         , camera_point
         , lose_point
         , change_point
+        , t_uc
+        , Add_Dianj1_2
+        , Add_Dianj3_2
+        , Add_Cent
+        , break_time
         )
 };
 

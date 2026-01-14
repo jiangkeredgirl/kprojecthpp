@@ -87,11 +87,11 @@ using namespace spdlog;
 
 
 
-const string  g_spdlog_default_pattern("[%i-%t-%Y-%m-%d %H:%M:%S.%e] [%l] %v"/*"[%i][%P][%t]%+"*/);
+const string  g_spdlog_default_pattern("[%n][%6t][%8l][%Y-%m-%d %H:%M:%S.%e][%s:%!:%#] %v"/*"[%i][%P][%t]%+"*/);
 typedef std::function<void(const filename_t &filename, std::FILE *file_stream)> after_open_eventf;
 
 
-inline int SpdlogInit()
+inline int SpdlogInit(const string & log_pattern)
 {
     spdlog::init_thread_pool(819200, 1);
     //当遇到错误级别以上的立刻刷新到日志
@@ -100,6 +100,9 @@ inline int SpdlogInit()
     // periodically flush all *registered* loggers every 3 seconds:
     // warning: only use if all your loggers are thread safe ("_mt" loggers)
     spdlog::flush_every(std::chrono::seconds(3));
+    // 在模式中包含 %t 来输出线程ID
+    // spdlog::set_pattern("[%Y-%m-%d %H:%M:%S] [%l] [thread %t] %v");
+    spdlog::set_pattern(log_pattern);
 
     return 0;
 }
@@ -176,8 +179,9 @@ inline std::shared_ptr<spdlog::logger> CreateLogger(const string & logger_name, 
         }
         logger->sinks().push_back(sink);
     }
-
-    //logger->info("logger created logger name:{}, log file path:{}", logger_name, file_path);
+    logger->set_level(log_level);
+    logger->set_pattern(log_pattern);
+    logger->info("logger created logger name:{}, log file path:{}", logger_name, file_path);
 
     return logger;
 }

@@ -10,7 +10,7 @@
 #define KQTTITLEBAR_H
 
 
-#include "kcommonhpp/kcommon.h"
+#include "../kcommonhpp/kcommon.h"
  //调用WIN API需要用到的头文件与库
 #ifdef Q_OS_WIN
 #pragma comment(lib, "user32.lib")

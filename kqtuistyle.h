@@ -17,7 +17,7 @@ static const string red_border_style1 =
     "QWidget{border:0px solid red;}"
     ;
 
-static const string red_border_style =
+static const string button_transparent_style =
     "QPushButton{background-color: transparent;}"
     //"QPushButton{border:1px solid red;}"
     ;
@@ -167,6 +167,9 @@ static const string entry_dialog_style =
     ;
 static const string entry_button_sampling_style =
     "QPushButton { border-image: url(:/resource/image/entry_button_sampling.png); }"
+    "QPushButton { color: black; font-size: 34px; font-weight: normal; text-align: left; }"
+    "QPushButton { padding-top: 630px; }"             // 加一些内边距
+    "QPushButton { padding-left: 400px; }"            // 加一些内边距
     //"QDialog{background-color: transparent;}"
     //"QDialog{border:1px solid; border-color:rgba(59, 68, 83, 255); padding:0px;}"
     ;
@@ -180,16 +183,16 @@ static const string button_exit_style =
     "QPushButton { border-image: url(:/resource/image/button_shutdown.png); }"
     ;
 static const string sampling_step1_label_style =
-    "QLabel { border-image: url(:/resource/image/sampling_step_1_title.png); }"
+    ".QWidget { border-image: url(:/resource/image/sampling_step_1_title.png); }"
     ;
 static const string sampling_step2_label_style =
-    "QLabel { border-image: url(:/resource/image/sampling_step_2_title.png); }"
+    ".QWidget { border-image: url(:/resource/image/sampling_step_2_title.png); }"
     ;
 static const string sampling_step3_label_style =
-    "QLabel { border-image: url(:/resource/image/sampling_step_3_title.png); }"
+    ".QWidget { border-image: url(:/resource/image/sampling_step_3_title.png); }"
     ;
 static const string sampling_step4_label_style =
-    "QLabel { border-image: url(:/resource/image/sampling_step_4_title.png); }"
+    ".QWidget { border-image: url(:/resource/image/sampling_step_4_title.png); }"
     ;
 
 static const string sampling_step1_content_background_style =
@@ -241,11 +244,9 @@ static const string sampling_step3_confirm_button_cancel_style =
     "QPushButton:pressed { border-image: url(:/resource/image/sampling_step3_confirm_cancel_pressed.png); }"
     "QPushButton:disabled { border-image: url(:/resource/image/sampling_step3_confirm_cancel_disabled.png); }"
     ;
-static const string label_style =
-    "QLabel { font-size: 30px; }"
-    ;
 
 static const string sampling_step1_content_button_style =
+    "QPushButton { background-color: transparent; }"
     "QPushButton { border-image: url(:/resource/image/sampling_step1_content_button_uncheck.png); }"
     "QPushButton:checked { border-image: url(:/resource/image/sampling_step1_content_button_checked.png); }"
     ;
@@ -256,7 +257,9 @@ static const string transparent_style =
     "background-color:transparent; border:0px solid transparent;padding:0px;margin:0px;"
     ;
 static const string boder_style =
-    "background-color:transparent; border:3px solid red;padding:0px;margin:0px;"
+    "{background-color:transparent;}"
+    "{border:2px solid red;}"
+    "{padding:0px; margin:0px;}"
     ;
 static const string lineedit_style =
     "QLineEdit { border: 2px solid #5A9; background-color: #F3F3F3; border-radius: 5px; padding: 5px; }"
@@ -266,3 +269,93 @@ static const string lineedit_style =
     "QLineEdit:focus { border: 2px solid #0078D7; background-color: #FFFFFF; }"
     "QLineEdit[readOnly=\"true\"] { background-color: #EAEAEA; color: #666; border: 1px solid #CCC; }"
     ;
+
+static const string button_login_style =
+    "QPushButton { background-color:transparent; border:0px solid transparent;padding:0px;margin:0px; }"
+    "QPushButton { color: white; font-size: 24px; font-weight: bold; }"
+    ;
+
+static const string label_style =
+    "QLabel { font-size: 30px; }"
+    ;
+
+static const string label_login_title_style =
+    "QLabel { color: rgb(57,187,207); font-size: 48px; font-weight: bold; }"
+    ;
+
+static const string button_entryui_style =
+    "QPushButton { background-color: transparent; }"
+    //"QPushButton{border:1px solid red;}"
+    "QPushButton { color: rgb(57,57,57); font-size: 34px; font-weight: normal; text-align: left; }"
+    "QPushButton { padding-top: 220px; }"            // 加一些内边距
+    "QPushButton { padding-left: 170px; }"            // 加一些内边距
+    ;
+
+static const string button_entryui_style1 =
+    "QPushButton { background-color: transparent; }"
+    //"QPushButton{border:1px solid red;}"
+    "QPushButton { color: rgb(57,57,57); font-size: 34px; font-weight: normal; text-align: left; }"
+    "QPushButton { padding-top: 630px; }"            // 加一些内边距
+    "QPushButton { padding-left: 170px; }"            // 加一些内边距
+    ;
+static const string sampling_step_title_label_style =
+    "QLabel { background: transparent; background-color: transparent; }"
+    //"QLabel { border:1px solid red;}"
+    "QLabel { color: white; font-size: 34px; font-weight: normal; text-align: center; }"
+    //"QLabel { padding-top: 630px; }"            // 加一些内边距
+    //"QLabel { padding-left: 170px; }"            // 加一些内边距
+    ;
+
+/// radiobutton style 解决 窗口失去焦点后  radiobutton 样式有变化的bug
+static const string sampling_radiobutton_style =
+    R"(
+        QRadioButton {
+            spacing: 5px;
+            color: black;
+            background-color: transparent;
+        }
+
+        QRadioButton::indicator {
+            width: 13px;
+            height: 13px;
+        }
+
+        QRadioButton::indicator:unchecked {
+            border: 2px solid #999999;
+            border-radius: 7px;
+            background-color: white;
+        }
+
+        QRadioButton::indicator:unchecked:hover {
+            border: 2px solid #0078D7;
+        }
+
+        QRadioButton::indicator:checked {
+            border: 2px solid #0078D7;
+            border-radius: 7px;
+            background-color: white;
+        }
+
+        QRadioButton::indicator:checked:hover {
+            border: 2px solid #005A9E;
+        }
+
+        QRadioButton::indicator:checked::after {
+            content: "";
+            display: block;
+            width: 7px;
+            height: 7px;
+            margin: 3px;
+            border-radius: 4px;
+            background-color: #0078D7;
+        }
+
+        /* 重点：移除焦点状态的虚线框 */
+        QRadioButton:focus {
+            outline: none;
+        }
+
+        QRadioButton::indicator:focus {
+            border: 2px solid #0078D7;
+        }
+    )";

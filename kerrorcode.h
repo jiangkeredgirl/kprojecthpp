@@ -11,7 +11,7 @@
 #include <map>
 #include <string>
 using namespace std;
-#include "kcommonhpp/macrotostring.h"
+#include "../kcommonhpp/macrotostring.h"
 
 
  /// 错误等级
@@ -24,9 +24,10 @@ enum E_ERROR_LEVEL
 };
 
 /// error_code  0-100 reserver
-#define ERRORCODE_OK                                     0  // 无错误
-#define ERRORCODE_FAIL                                   1  // 错误未定义
-#define ERRORCODE_STOP                                   2  // 手动停止
+#define ERRORCODE_OK                                    0   // 无错误
+#define ERRORCODE_FAIL                                  1   // 错误未定义
+//#define ERRORCODE_STOP                                2   // 手动停止
+#define ERRORCODE_MACHINESTATE_SWITCH                   10  // 状态机切换
 
 /// puncture device error 100-199
 #define ERRORCODE_PUNCTUREDEVICE_OPEN                   100  // 穿刺设备打开错误
@@ -35,14 +36,21 @@ enum E_ERROR_LEVEL
 #define ERRORCODE_PUNCTUREDEVICE_READ_TIMEOUT           103  // 穿刺设备读取数据超时
 #define ERRORCODE_PUNCTUREDEVICE_FAIL_TO_POS            104  // 穿刺设备达不到目标位置
 #define ERRORCODE_PUNCTUREDEVICE_SERIAL_ERROR           105  // 穿刺设备串口读写错误
-#define ERRORCODE_PUNCTUREDEVICE_POS_ERROR              106  // 穿刺设备位置错误
+#define ERRORCODE_PUNCTUREDEVICE_POS_ERROR              106  // 穿刺设备位置偏移错误
 
-/// armrest device error 200-299
+/// armrest device error 200-249
 #define ERRORCODE_ARMRESTDEVICE_OPEN                    200  // 臂托设备打开错误
 #define ERRORCODE_ARMRESTDEVICE_HOMING                  201  // 臂托设备找零错误
 #define ERRORCODE_ARMRESTDEVICE_WRITE_TIMEOUT           202  // 臂托设备写入数据超时
 #define ERRORCODE_ARMRESTDEVICE_READ_TIMEOUT            203  // 臂托设备读取数据超时
 #define ERRORCODE_ARMRESTDEVICE_SERIAL_ERROR            204  // 臂托设备串口读写错误
+
+/// pressureband device error 250-299
+#define ERRORCODE_PRESSUREBANDDEVICE_OPEN               250  // 压脉设备打开错误
+#define ERRORCODE_PRESSUREBANDDEVICE_HOMING             251  // 压脉设备找零错误
+#define ERRORCODE_PRESSUREBANDDEVICE_WRITE_TIMEOUT      252  // 压脉设备写入数据超时
+#define ERRORCODE_PRESSUREBANDDEVICE_READ_TIMEOUT       253  // 压脉设备读取数据超时
+#define ERRORCODE_PRESSUREBANDDEVICE_SERIAL_ERROR       254  // 压脉设备串口读写错误
 
 /// physicalkey device error 300-399
 #define ERRORCODE_PHYSICALKEYDEVICE_OPEN                300  // 物理按键设备打开错误
@@ -53,11 +61,13 @@ enum E_ERROR_LEVEL
 /// nir dvice  error 400-499
 #define ERRORCODE_NIRDEVICE_OPEN                        400  // 红外设备打开错误
 #define ERRORCODE_NIRDEVICE_BREAKDOWN                   401  // 红外设备通信中断
+#define ERRORCODE_NIRDEVICE_PICTURE_TIMEOUT             402  // 红外设备图像超时
 
 /// ultrasound device error 500-599
 #define ERRORCODE_ULTRADEVICE_OPEN                      500  // 超声设备启动错误
 #define ERRORCODE_ULTRADEVICE_DISCONNECTED              501  // 超声设备链接断开
 #define ERRORCODE_ULTRADEVICE_BREAKDOWN                 502  // 超声设备通信中断
+#define ERRORCODE_ULTRADEVICE_PICTURE_TIMEOUT           503  // 超声设备图像超时
 
 
 // /// armplate device error 200-299
@@ -71,7 +81,25 @@ enum E_ERROR_LEVEL
 #define ERRORCODE_ROBOTICARMDEVICE_COLLISION             602  // 机械臂碰撞错误
 #define ERRORCODE_ROBOTICARMDEVICE_MOVE                  603  // 机械臂移动错误
 
+/// needle pos detection dvice  error 700-799
+#define ERRORCODE_NEEDLEPOSDETECTDEVICE_OPEN             700  // 针尖检测设备打开错误
+#define ERRORCODE_NEEDLEPOSDETECTDEVICE_BREAKDOWN        701  // 针尖检测设备通信中断
+#define ERRORCODE_NEEDLEPOSDETECTDEVICE_TIMEOUT          702  // 针尖检测设备图像超时
+#define ERRORCODE_NEEDLEPOSDETECTDEVICE_READ             703  // 针尖检测设备读取图片失败
 
+/// laserdistance device error 800-850
+#define ERRORCODE_LASERDISTANCEDEVICE_OPEN               800  // 激光测距设备打开错误
+#define ERRORCODE_LASERDISTANCEDEVICE_HOMING             801  // 激光测距设备找零错误
+#define ERRORCODE_LASERDISTANCEDEVICE_WRITE_TIMEOUT      802  // 激光测距设备写入数据超时
+#define ERRORCODE_LASERDISTANCEDEVICE_READ_TIMEOUT       803  // 激光测距设备读取数据超时
+#define ERRORCODE_LASERDISTANCEDEVICE_SERIAL_ERROR       804  // 激光测距设备串口读写错误
+#define ERRORCODE_LASERDISTANCEDEVICE_OUTRANGE           805  // 激光测距设备超出测量范围
+
+/// daheng dvice  error 850-899
+#define ERRORCODE_DAHENGDEVICE_OPEN                      850  // 大恒设备打开错误
+#define ERRORCODE_DAHENGDEVICE_BREAKDOWN                 851  // 大恒设备通信中断
+#define ERRORCODE_DAHENGDEVICE_PICTURE_TIMEOUT           852  // 大恒设备图像超时
+#define ERRORCODE_DAHENGDEVICE_READ                      853  // 大恒设备读取图片失败
 
 // /// syringe dvice  error 500-599
 // #define ERRORCODE_SYRINGEDEVICE_BOOT                     500  // 注射器启动错误
@@ -83,7 +111,6 @@ enum E_ERROR_LEVEL
 #define ERRORCODE_CV_ERROR_IRSEG_WRONG_ROI               902  // 红外分割异常，袖套佩戴或手臂摆位错误
 #define ERRORCODE_CV_ERROR_IRSEG_NO_VISIABLE_VESSEL      903  // 红外识别异常，没有可见血管
 #define ERRORCODE_CV_ERROR_IRSEG_NO_FITABLE_VESSEL       904  // 红外识别异常，没有适合贴合的血管
-
 
 #define ERRORCODE_CV_ERROR_USCONTCAT_INVALID_COPULANT    910  // 超声输入异常，卡扣质量不合格
 #define ERRORCODE_CV_ERROR_USCONTCAT_INVALID_BUTTOM      911  // 超声贴合异常，贴合面质量不合格
@@ -97,17 +124,19 @@ enum E_ERROR_LEVEL
 #define ERRORCODE_CV_ERROR_EMPTY_INPUT                   991  // CV识别异常，没有适合贴合的血管
 #define ERRORCODE_CV_ERROR_UNKNOWN_ERROR                 992  // CV识别异常，未知错误
 
+#define ERRORCODE_MAINCONTROL_VESSEL_SHALLOW             1001 // 血管深度过小
+#define ERRORCODE_MAINCONTROL_VESSEL_SAMLL               1002 // 血管直径过小
+#define ERRORCODE_MAINCONTROL_VESSEL_OFFSET              1003 // 血管偏移过大（手臂移动）
 
-#define ERRORCODE_WARN_BASE                  1000  // 大于该值的错误码是报警码，等级是 ERROR_LEVEL_WARN
-
-#define ERRORCODE_WARN_VESSEL_DEEP_INSUFFICIENT (ERRORCODE_WARN_BASE + 101) // 血管深度过小
+#define ERRORCODE_WARN_BASE                              1100  // 大于该值的错误码是报警码，等级是 ERROR_LEVEL_WARN
+// #define ERRORCODE_WARN_VESSEL_DEEP_INSUFFICIENT (ERRORCODE_WARN_BASE + 101) // 血管深度过小
 
 /// 定义错误码的错误等级
 const map<int, int> g_erorr_code_level = 
 {
     {ERRORCODE_OK,                                      ERROR_LEVEL_NONE }
     ,{ERRORCODE_FAIL,                                   ERROR_LEVEL_ERROR}
-    ,{ERRORCODE_STOP,                                   ERROR_LEVEL_NONE}
+    ,{ERRORCODE_MACHINESTATE_SWITCH,                    ERROR_LEVEL_ERROR}
     ,{ERRORCODE_PUNCTUREDEVICE_OPEN,                    ERROR_LEVEL_ERROR}
     ,{ERRORCODE_PUNCTUREDEVICE_HOMING,                  ERROR_LEVEL_ERROR}
     ,{ERRORCODE_PUNCTUREDEVICE_WRITE_TIMEOUT,           ERROR_LEVEL_ERROR}
@@ -120,18 +149,40 @@ const map<int, int> g_erorr_code_level =
     ,{ERRORCODE_ARMRESTDEVICE_WRITE_TIMEOUT,            ERROR_LEVEL_ERROR}
     ,{ERRORCODE_ARMRESTDEVICE_READ_TIMEOUT,             ERROR_LEVEL_ERROR}
     ,{ERRORCODE_ARMRESTDEVICE_SERIAL_ERROR,             ERROR_LEVEL_ERROR}
+    ,{ERRORCODE_PRESSUREBANDDEVICE_OPEN,                ERROR_LEVEL_ERROR}
+    ,{ERRORCODE_PRESSUREBANDDEVICE_HOMING,              ERROR_LEVEL_ERROR}
+    ,{ERRORCODE_PRESSUREBANDDEVICE_WRITE_TIMEOUT,       ERROR_LEVEL_ERROR}
+    ,{ERRORCODE_PRESSUREBANDDEVICE_READ_TIMEOUT,        ERROR_LEVEL_ERROR}
+    ,{ERRORCODE_PRESSUREBANDDEVICE_SERIAL_ERROR,        ERROR_LEVEL_ERROR}
     ,{ERRORCODE_PHYSICALKEYDEVICE_OPEN,                 ERROR_LEVEL_ERROR}
     ,{ERRORCODE_PHYSICALKEYDEVICE_WRITE_TIMEOUT,        ERROR_LEVEL_ERROR}
     ,{ERRORCODE_PHYSICALKEYDEVICE_READ_TIMEOUT,         ERROR_LEVEL_ERROR}
     ,{ERRORCODE_PHYSICALKEYDEVICE_SERIAL_ERROR,         ERROR_LEVEL_ERROR}
     ,{ERRORCODE_NIRDEVICE_OPEN,                         ERROR_LEVEL_ERROR}
     ,{ERRORCODE_NIRDEVICE_BREAKDOWN,                    ERROR_LEVEL_ERROR}
+    ,{ERRORCODE_NIRDEVICE_PICTURE_TIMEOUT,              ERROR_LEVEL_ERROR}
     ,{ERRORCODE_ULTRADEVICE_OPEN,                       ERROR_LEVEL_ERROR}
     ,{ERRORCODE_ULTRADEVICE_DISCONNECTED,               ERROR_LEVEL_ERROR}
     ,{ERRORCODE_ULTRADEVICE_BREAKDOWN,                  ERROR_LEVEL_ERROR}
+    ,{ERRORCODE_ULTRADEVICE_PICTURE_TIMEOUT,            ERROR_LEVEL_ERROR}
     ,{ERRORCODE_ROBOTICARMDEVICE_BOOT,                  ERROR_LEVEL_ERROR}
     ,{ERRORCODE_ROBOTICARMDEVICE_JOINT,                 ERROR_LEVEL_ERROR}
     ,{ERRORCODE_ROBOTICARMDEVICE_COLLISION,             ERROR_LEVEL_ERROR}
+    ,{ERRORCODE_ROBOTICARMDEVICE_MOVE,                  ERROR_LEVEL_ERROR}
+    ,{ERRORCODE_NEEDLEPOSDETECTDEVICE_OPEN,             ERROR_LEVEL_ERROR}
+    ,{ERRORCODE_NEEDLEPOSDETECTDEVICE_BREAKDOWN,        ERROR_LEVEL_ERROR}
+    ,{ERRORCODE_NEEDLEPOSDETECTDEVICE_TIMEOUT,          ERROR_LEVEL_ERROR}
+    ,{ERRORCODE_NEEDLEPOSDETECTDEVICE_READ,             ERROR_LEVEL_ERROR}
+    ,{ERRORCODE_LASERDISTANCEDEVICE_OPEN,               ERROR_LEVEL_ERROR}
+    ,{ERRORCODE_LASERDISTANCEDEVICE_HOMING,             ERROR_LEVEL_ERROR}
+    ,{ERRORCODE_LASERDISTANCEDEVICE_WRITE_TIMEOUT,      ERROR_LEVEL_ERROR}
+    ,{ERRORCODE_LASERDISTANCEDEVICE_READ_TIMEOUT,       ERROR_LEVEL_ERROR}
+    ,{ERRORCODE_LASERDISTANCEDEVICE_SERIAL_ERROR,       ERROR_LEVEL_ERROR}
+    ,{ERRORCODE_LASERDISTANCEDEVICE_OUTRANGE,           ERROR_LEVEL_WARN }
+    ,{ERRORCODE_DAHENGDEVICE_OPEN,                      ERROR_LEVEL_ERROR}
+    ,{ERRORCODE_DAHENGDEVICE_BREAKDOWN,                 ERROR_LEVEL_ERROR}
+    ,{ERRORCODE_DAHENGDEVICE_PICTURE_TIMEOUT,           ERROR_LEVEL_ERROR}
+    ,{ERRORCODE_DAHENGDEVICE_READ,                      ERROR_LEVEL_ERROR}
     ,{ERRORCODE_CV_ERROR_IRSEG_INVALID_IR,              ERROR_LEVEL_ERROR}
     ,{ERRORCODE_CV_ERROR_IRSEG_INVALID_DEPTH,           ERROR_LEVEL_ERROR}
     ,{ERRORCODE_CV_ERROR_IRSEG_WRONG_ROI,               ERROR_LEVEL_ERROR}
@@ -145,15 +196,17 @@ const map<int, int> g_erorr_code_level =
     ,{ERRORCODE_CV_ERROR_USSEG_VESSEL_TOO_SUPERFICIAL,  ERROR_LEVEL_ERROR}
     ,{ERRORCODE_CV_ERROR_USSEG_WRONG_ROI,               ERROR_LEVEL_ERROR}
     ,{ERRORCODE_CV_ERROR_EMPTY_INPUT,                   ERROR_LEVEL_ERROR}
-    ,{ERRORCODE_CV_ERROR_UNKNOWN_ERROR,                 ERROR_LEVEL_ERROR}
-
+    ,{ERRORCODE_CV_ERROR_UNKNOWN_ERROR,                 ERROR_LEVEL_ERROR}    
+    ,{ERRORCODE_MAINCONTROL_VESSEL_SHALLOW,             ERROR_LEVEL_WARN}
+    ,{ERRORCODE_MAINCONTROL_VESSEL_SAMLL,               ERROR_LEVEL_WARN}
+    ,{ERRORCODE_MAINCONTROL_VESSEL_OFFSET,              ERROR_LEVEL_WARN}
     // ,{ERRORCODE_ULTRASOUNDDEVICE_SCAN,         ERROR_LEVEL_ERROR}
     // ,{ERRORCODE_ROBOTICARMDEVICE_BOOT,         ERROR_LEVEL_ERROR}
     // ,{ERRORCODE_ROBOTICARMDEVICE_JOINT,        ERROR_LEVEL_ERROR}
     // ,{ERRORCODE_SYRINGEDEVICE_BOOT,            ERROR_LEVEL_ERROR}
     // ,{ERRORCODE_SYRINGEDEVICE_PUMP,            ERROR_LEVEL_ERROR}
     
-    ,{ERRORCODE_WARN_VESSEL_DEEP_INSUFFICIENT,          ERROR_LEVEL_WARN}
+    // ,{ERRORCODE_WARN_VESSEL_DEEP_INSUFFICIENT,          ERROR_LEVEL_WARN}
 };
 
 /// <summary>
@@ -196,28 +249,35 @@ inline string ErrorCodeStr(int errorcode)
 	{
         ENUM_NAME_VALUE_FEILD_STR_CASE(ERRORCODE_OK,                              errorcode, "无错误");
         ENUM_NAME_VALUE_FEILD_STR_CASE(ERRORCODE_FAIL,                            errorcode, "错误未定义");
-        ENUM_NAME_VALUE_FEILD_STR_CASE(ERRORCODE_STOP,                            errorcode, "手动停止");
+        ENUM_NAME_VALUE_FEILD_STR_CASE(ERRORCODE_MACHINESTATE_SWITCH,             errorcode, "状态机切换");
         ENUM_NAME_VALUE_FEILD_STR_CASE(ERRORCODE_PUNCTUREDEVICE_OPEN,             errorcode, "穿刺设备打开错误");
         ENUM_NAME_VALUE_FEILD_STR_CASE(ERRORCODE_PUNCTUREDEVICE_HOMING,           errorcode, "穿刺设备找零错误");
         ENUM_NAME_VALUE_FEILD_STR_CASE(ERRORCODE_PUNCTUREDEVICE_WRITE_TIMEOUT,    errorcode, "穿刺设备写入数据超时");
         ENUM_NAME_VALUE_FEILD_STR_CASE(ERRORCODE_PUNCTUREDEVICE_READ_TIMEOUT,     errorcode, "穿刺设备读取数据超时");
         ENUM_NAME_VALUE_FEILD_STR_CASE(ERRORCODE_PUNCTUREDEVICE_FAIL_TO_POS,      errorcode, "穿刺设备达不到目标位置");
         ENUM_NAME_VALUE_FEILD_STR_CASE(ERRORCODE_PUNCTUREDEVICE_SERIAL_ERROR,     errorcode, "穿刺设备串口读写错误");
-        ENUM_NAME_VALUE_FEILD_STR_CASE(ERRORCODE_PUNCTUREDEVICE_POS_ERROR,        errorcode, "穿刺设备位置错误");
+        ENUM_NAME_VALUE_FEILD_STR_CASE(ERRORCODE_PUNCTUREDEVICE_POS_ERROR,        errorcode, "穿刺设备位置偏移错误");
         ENUM_NAME_VALUE_FEILD_STR_CASE(ERRORCODE_ARMRESTDEVICE_OPEN,              errorcode, "臂托设备打开错误");
         ENUM_NAME_VALUE_FEILD_STR_CASE(ERRORCODE_ARMRESTDEVICE_HOMING,            errorcode, "臂托设备找零错误");
         ENUM_NAME_VALUE_FEILD_STR_CASE(ERRORCODE_ARMRESTDEVICE_WRITE_TIMEOUT,     errorcode, "臂托设备写入数据超时");
         ENUM_NAME_VALUE_FEILD_STR_CASE(ERRORCODE_ARMRESTDEVICE_READ_TIMEOUT,      errorcode, "臂托设备读取数据超时");
         ENUM_NAME_VALUE_FEILD_STR_CASE(ERRORCODE_ARMRESTDEVICE_SERIAL_ERROR,      errorcode, "臂托设备串口读写错误");
+        ENUM_NAME_VALUE_FEILD_STR_CASE(ERRORCODE_PRESSUREBANDDEVICE_OPEN,         errorcode, "压脉设备打开错误");
+        ENUM_NAME_VALUE_FEILD_STR_CASE(ERRORCODE_PRESSUREBANDDEVICE_HOMING,       errorcode, "压脉设备找零错误");
+        ENUM_NAME_VALUE_FEILD_STR_CASE(ERRORCODE_PRESSUREBANDDEVICE_WRITE_TIMEOUT,errorcode, "压脉设备写入数据超时");
+        ENUM_NAME_VALUE_FEILD_STR_CASE(ERRORCODE_PRESSUREBANDDEVICE_READ_TIMEOUT, errorcode, "压脉设备读取数据超时");
+        ENUM_NAME_VALUE_FEILD_STR_CASE(ERRORCODE_PRESSUREBANDDEVICE_SERIAL_ERROR, errorcode, "压脉设备串口读写错误");
         ENUM_NAME_VALUE_FEILD_STR_CASE(ERRORCODE_PHYSICALKEYDEVICE_OPEN,          errorcode, "物理按键设备打开错误");
         ENUM_NAME_VALUE_FEILD_STR_CASE(ERRORCODE_PHYSICALKEYDEVICE_WRITE_TIMEOUT, errorcode, "物理按键设备写入数据超时");
         ENUM_NAME_VALUE_FEILD_STR_CASE(ERRORCODE_PHYSICALKEYDEVICE_READ_TIMEOUT,  errorcode, "物理按键设备读取数据超时");
         ENUM_NAME_VALUE_FEILD_STR_CASE(ERRORCODE_PHYSICALKEYDEVICE_SERIAL_ERROR,  errorcode, "物理按键设备串口读写错误");
         ENUM_NAME_VALUE_FEILD_STR_CASE(ERRORCODE_NIRDEVICE_OPEN,                  errorcode, "红外设备打开错误");
         ENUM_NAME_VALUE_FEILD_STR_CASE(ERRORCODE_NIRDEVICE_BREAKDOWN,             errorcode, "红外设备通信中断");
+        ENUM_NAME_VALUE_FEILD_STR_CASE(ERRORCODE_NIRDEVICE_PICTURE_TIMEOUT,       errorcode, "红外设备图像超时");
         ENUM_NAME_VALUE_FEILD_STR_CASE(ERRORCODE_ULTRADEVICE_OPEN,                errorcode, "超声设备启动错误");
         ENUM_NAME_VALUE_FEILD_STR_CASE(ERRORCODE_ULTRADEVICE_DISCONNECTED,        errorcode, "超声设备链接断开");
         ENUM_NAME_VALUE_FEILD_STR_CASE(ERRORCODE_ULTRADEVICE_BREAKDOWN,           errorcode, "超声设备通信中断");
+        ENUM_NAME_VALUE_FEILD_STR_CASE(ERRORCODE_ULTRADEVICE_PICTURE_TIMEOUT,     errorcode, "超声设备图像超时");
 
         // ENUM_NAME_VALUE_FEILD_STR_CASE(ERRORCODE_SYSTEMDEVICE_BOOT,             errorcode, "系统设备启动错误");
         // ENUM_NAME_VALUE_FEILD_STR_CASE(ERRORCODE_SAMPLINGPLATEDEVICE_BOOT,      errorcode, "采血台设备启动错误");
@@ -229,6 +289,20 @@ inline string ErrorCodeStr(int errorcode)
         ENUM_NAME_VALUE_FEILD_STR_CASE(ERRORCODE_ROBOTICARMDEVICE_JOINT,           errorcode, "机械臂关节错误");
         ENUM_NAME_VALUE_FEILD_STR_CASE(ERRORCODE_ROBOTICARMDEVICE_COLLISION,       errorcode, "机械臂碰撞错误");
         ENUM_NAME_VALUE_FEILD_STR_CASE(ERRORCODE_ROBOTICARMDEVICE_MOVE,            errorcode, "机械臂移动错误");
+        ENUM_NAME_VALUE_FEILD_STR_CASE(ERRORCODE_NEEDLEPOSDETECTDEVICE_OPEN,       errorcode, "针尖检测设备打开错误");
+        ENUM_NAME_VALUE_FEILD_STR_CASE(ERRORCODE_NEEDLEPOSDETECTDEVICE_BREAKDOWN,  errorcode, "针尖检测设备通信中断");
+        ENUM_NAME_VALUE_FEILD_STR_CASE(ERRORCODE_NEEDLEPOSDETECTDEVICE_TIMEOUT,    errorcode, "针尖检测设备图像超时");
+        ENUM_NAME_VALUE_FEILD_STR_CASE(ERRORCODE_NEEDLEPOSDETECTDEVICE_READ,       errorcode, "针尖检测设备读取图片失败");
+        ENUM_NAME_VALUE_FEILD_STR_CASE(ERRORCODE_LASERDISTANCEDEVICE_OPEN,         errorcode, "激光测距设备打开错误");
+        ENUM_NAME_VALUE_FEILD_STR_CASE(ERRORCODE_LASERDISTANCEDEVICE_HOMING,       errorcode, "激光测距设备找零错误");
+        ENUM_NAME_VALUE_FEILD_STR_CASE(ERRORCODE_LASERDISTANCEDEVICE_WRITE_TIMEOUT,errorcode, "激光测距设备写入数据超时");
+        ENUM_NAME_VALUE_FEILD_STR_CASE(ERRORCODE_LASERDISTANCEDEVICE_READ_TIMEOUT, errorcode, "激光测距设备读取数据超时");
+        ENUM_NAME_VALUE_FEILD_STR_CASE(ERRORCODE_LASERDISTANCEDEVICE_SERIAL_ERROR, errorcode, "激光测距设备串口读写错误");
+        ENUM_NAME_VALUE_FEILD_STR_CASE(ERRORCODE_LASERDISTANCEDEVICE_OUTRANGE,     errorcode, "激光测距设备超出测量范围");
+        ENUM_NAME_VALUE_FEILD_STR_CASE(ERRORCODE_DAHENGDEVICE_OPEN,                errorcode, "大恒设备打开错误");
+        ENUM_NAME_VALUE_FEILD_STR_CASE(ERRORCODE_DAHENGDEVICE_BREAKDOWN,           errorcode, "大恒设备通信中断");
+        ENUM_NAME_VALUE_FEILD_STR_CASE(ERRORCODE_DAHENGDEVICE_PICTURE_TIMEOUT,     errorcode, "大恒设备图像超时");
+        ENUM_NAME_VALUE_FEILD_STR_CASE(ERRORCODE_DAHENGDEVICE_READ,                errorcode, "大恒设备读取图片失败");
         // ENUM_NAME_VALUE_FEILD_STR_CASE(ERRORCODE_SYRINGEDEVICE_BOOT,            errorcode, "注射器启动错误");
         // ENUM_NAME_VALUE_FEILD_STR_CASE(ERRORCODE_SYRINGEDEVICE_PUMP,            errorcode, "注射器抽血错误");
 
@@ -247,10 +321,14 @@ inline string ErrorCodeStr(int errorcode)
         ENUM_NAME_VALUE_FEILD_STR_CASE(ERRORCODE_CV_ERROR_USSEG_VESSEL_TOO_SUPERFICIAL, errorcode, "超声识别异常，血管深度过浅");
         ENUM_NAME_VALUE_FEILD_STR_CASE(ERRORCODE_CV_ERROR_USSEG_WRONG_ROI,              errorcode, "超声识别异常，有效贴合区域分割");
 
-        ENUM_NAME_VALUE_FEILD_STR_CASE(ERRORCODE_CV_ERROR_UNKNOWN_ERROR,                errorcode, "图像算法识别异常，未知错误");
         ENUM_NAME_VALUE_FEILD_STR_CASE(ERRORCODE_CV_ERROR_EMPTY_INPUT,                  errorcode, "图像算法输入数据为空");
+        ENUM_NAME_VALUE_FEILD_STR_CASE(ERRORCODE_CV_ERROR_UNKNOWN_ERROR,                errorcode, "图像算法识别异常，未知错误");
 
-        ENUM_NAME_VALUE_FEILD_STR_CASE(ERRORCODE_WARN_VESSEL_DEEP_INSUFFICIENT,         errorcode, "血管深度过小");
+        ENUM_NAME_VALUE_FEILD_STR_CASE(ERRORCODE_MAINCONTROL_VESSEL_SHALLOW,            errorcode, "血管深度过小");
+        ENUM_NAME_VALUE_FEILD_STR_CASE(ERRORCODE_MAINCONTROL_VESSEL_SAMLL,              errorcode, "血管直径过小");
+        ENUM_NAME_VALUE_FEILD_STR_CASE(ERRORCODE_MAINCONTROL_VESSEL_OFFSET,             errorcode, "血管偏移过大（手臂移动）");
+
+        // ENUM_NAME_VALUE_FEILD_STR_CASE(ERRORCODE_WARN_VESSEL_DEEP_INSUFFICIENT,         errorcode, "血管深度过小");
 
 
 	default:

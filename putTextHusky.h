@@ -2,7 +2,7 @@
 #ifndef PUTTEXT_H_
 #define PUTTEXT_H_
 
-#include <windows.h>
+// #include <windows.h>
 #include <string>
 #include <opencv2/opencv.hpp>
 
@@ -33,7 +33,7 @@ inline static void putTextHusky(const Mat &dst, const char* str, Point org, Scal
 	y = org.y < 0 ? -org.y : 0;
 
 	LOGFONTA lf;
-	lf.lfHeight = -fontSize;
+    lf.lfHeight = -36/*fontSize*/;
 	lf.lfWidth = 0;
 	lf.lfEscapement = 0;
 	lf.lfOrientation = 0;

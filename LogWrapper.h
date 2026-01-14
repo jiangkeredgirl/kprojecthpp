@@ -21,7 +21,7 @@
 #include "spdlog/pattern_formatter.h"
 #include "spdlog/sinks/stdout_sinks.h"
 #include "spdlog/common.h"
-#include "kcommonhpp/kcommon.h"
+#include "../kcommonhpp/kcommon.h"
 #include "SpdLogWrapper.h"
 using namespace spdlog;
 
@@ -64,8 +64,12 @@ public:
         m_default_log_dir = root_log_dir + "/" + date + "/" + date + "-" + time;
         KFile::CreateDir(m_default_log_dir);
         string default_log_path = m_default_log_dir + "/" + GetProcessName() + ".log";
-        const string  log_pattern("[%i-%t-%Y-%m-%d %H:%M:%S.%e] [%l] %v");
-        SpdlogInit();
+        // 在模式中包含 %t 来输出线程ID
+        // spdlog::set_pattern("[%Y-%m-%d %H:%M:%S] [%l] [thread %t] %v");
+        // 线程ID固定宽度为6，右对齐，用0填充
+        // spdlog::set_pattern("[%Y-%m-%d %H:%M:%S] [%6t] [%l] %v");
+        const string  log_pattern("[%n][%6t][%8l][%Y-%m-%d %H:%M:%S.%e][%s:%!:%#] %v");
+        SpdlogInit(log_pattern);
         bool is_async = true;
         bool is_daily = true;
         std::shared_ptr<spdlog::logger>  default_logger = CreateLogger("default_logger", true, true, is_async, is_daily, false, default_log_path, log_level, log_pattern, [log_pattern](const filename_t& filename, std::FILE* file_stream) {WriteLogHeader("default_logger", filename, file_stream, log_pattern); });
@@ -79,13 +83,19 @@ public:
         string date = KTime<>::GetDate(KTime<>::GetNowDateTime());
         string time = KTime<>::GetTime(KTime<>::GetNowDateTime());
         string new_log_dir = m_default_log_dir + "/" + date + "-" + time + "-" + log_sub_folder_name;
+        // 检查最后一个字符是否是'.'
+        while (!new_log_dir.empty() && new_log_dir.back() == '.')
+        {
+            new_log_dir.pop_back();  // 删除最后一个字符
+        }
+        std::cout << "处理后字符串: " << new_log_dir << std::endl;
         KFile::CreateDir(new_log_dir);
         string new_log_path = new_log_dir + "/" + GetProcessName() + ".log";
         // 假设 logger 名字叫 "file_logger"
         spdlog::drop("default_logger");  // 删除旧的 logger
         FlushLog();
         // 创建新的 logger，绑定新的日志文件
-        const string  log_pattern("[%i-%t-%Y-%m-%d %H:%M:%S.%e] [%l] %v");
+        const string  log_pattern("[%n][%6t][%8l][%Y-%m-%d %H:%M:%S.%e][%s:%!:%#] %v");
         bool is_async = true;
         bool is_daily = true;
         std::shared_ptr<spdlog::logger>  new_default_logger = CreateLogger("default_logger", true, true, is_async, is_daily, false, utf8tolocal(new_log_path), m_default_log_level, log_pattern, [log_pattern](const filename_t& filename, std::FILE* file_stream) {WriteLogHeader("default_logger", filename, file_stream, log_pattern); });

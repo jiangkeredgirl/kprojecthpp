@@ -13,7 +13,7 @@
 #define KQTDIALOG_H
 
 
-#include "kcommonhpp/kcommon.h"
+#include "../kcommonhpp/kcommon.h"
 #include "kqttitlebar.h"
  //调用WIN API需要用到的头文件与库 [实现缩放]
 #ifdef Q_OS_WIN

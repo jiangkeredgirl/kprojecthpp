@@ -6,14 +6,11 @@
  * \date   2025.01.04
  *********************************************************************/
 
-#include "./kprojecthpp/kproject.h"
-#include "./algorithm/BloodDrawingAlgorithm.h"
-#include "dbmanagement.h"
-#include "errorui.h"
-#include "infoui.h"
-#include "SmallScreenDisplay.h"
-#include "kprojecthpp/putTextHusky.h"
+// #include "kproject.h"
+#include "kmacro.h"
+#include "putTextHusky.h"
 #include <QtCore/QCoreApplication>
+#include "../algorithm/BloodDrawingAlgorithm.h"
 
 
 struct OutputData
@@ -31,12 +28,53 @@ struct OutputData
         int    radius  = 0;
         int    blood_x = 0;
     };
+    struct NeedleTargetLocation
+    {
+        QPoint needle_point     = {0, 0};  //< 穿刺针的圆心，可能比超声圆心向下
+        int needle_radius       = 20;      //< 针的半径 20 像素
+        int    needle_x         = 0;       //< 穿刺的针的 x 坐标，在超声图像上是固定值
+    };
     IRTargetLocation      ir_location;
     UltraTargetLocation   ultra_location;
+    NeedleTargetLocation  needle_location;
     vector<string>        info;
     vector<string>        success_info;
     vector<string>        fail_info;
 };
+
+#if 0
+struct AlgorithmResultOutput
+{
+    struct IRTargetLocation
+    {
+        QPoint line1_point1 = {0, 0};
+        QPoint line1_point2 = {0, 0};
+        QPoint line2_point1 = {0, 0};
+        QPoint line2_point2 = {0, 0};
+    };
+    struct UltraTargetLocation
+    {
+        QPoint ultra_point   = {0, 0};  //< 超声识别血管的圆心
+        int    ultra_radius  = 0;       //< 血管半径
+    };
+    struct NeedleTargetLocation
+    {
+        QPoint needle_point     = {0, 0};  //< 穿刺针的圆心，可能比超声圆心向下
+        const int needle_radius = 20;      //< 针的半径 20 像素
+        int    needle_x         = 0;       //< 穿刺的针的 x 坐标，在超声图像上是固定值
+        NeedleTargetLocation& operator = (const NeedleTargetLocation& other)
+        {
+            this->needle_point = other.needle_point;
+            this->needle_x     = other.needle_x;
+            return *this;
+        }
+    };
+    IRTargetLocation      ir_location;
+    UltraTargetLocation   ultra_location;
+    NeedleTargetLocation  needle_location;
+    vector<string>        resultinfo;
+};
+#endif
 
 struct OutputPunctureLocation;
 struct ChuanciPara;
@@ -110,6 +148,12 @@ public:
         m_output_data.ultra_location = point;
     }
 
+    void appendNeedlePoint(OutputData::NeedleTargetLocation point)
+    {
+        lock_guard<mutex> lock(m_output_display_mutex);
+        m_output_data.needle_location = point;
+    }
+
     void appendData(const vector<string>& lines)
     {
         lock_guard<mutex> lock(m_output_display_mutex);
@@ -126,16 +170,17 @@ public:
         m_output_data.fail_info.insert(m_output_data.fail_info.end(), lines.begin(), lines.end());
     }
 
-    void appendData(const cv::Vec3f& vec3, const ChuanciPara& punc_param)
+    void appendData(const cv::Vec3f& vec3, const ChuanciPara& punc_param, QPoint needle_point, double ULTRA_PHYSICAL_WIDTH_PIXEL)
     {
         lock_guard<mutex> lock(m_output_display_mutex);
         vector<string>lines;
-        lines.push_back(string("blood x:") + to_string(vec3[0] * 0.03));
-        lines.push_back(string("blood y:") + to_string(vec3[1] * 0.03));
-        lines.push_back(string("blood r:") + to_string(vec3[2] * 0.03));
+        lines.push_back(string("blood x:") + to_string(vec3[0] * ULTRA_PHYSICAL_WIDTH_PIXEL));
+        lines.push_back(string("blood y:") + to_string(vec3[1] * ULTRA_PHYSICAL_HEIGHT_PIXEL));
+        lines.push_back(string("blood r:") + to_string(vec3[2] * ULTRA_PHYSICAL_HEIGHT_PIXEL));
         lines.push_back(string("punct x:") + to_string(punc_param.Inject9));
         lines.push_back(string("punct y:") + to_string(punc_param.Rot7));
         lines.push_back(string("punct z:") + to_string(punc_param.Trans8));
+        lines.push_back(string("needl y:") + to_string(needle_point.y() * ULTRA_PHYSICAL_HEIGHT_PIXEL));
         m_output_data.info.insert(m_output_data.info.end(), lines.begin(), lines.end());
         //MatText(50, 50, lines, mat);
     }
@@ -248,6 +293,48 @@ public:
         }
     }
 
+    void drawNeedlePoint(OutputData::NeedleTargetLocation point, QPixmap& pix)
+    {
+        //LOG_INFO("*****************drawNeedlePoint");
+        //QPainter painter(&pix);
+        // 创建一个400x400的QPixmap，背景为白色
+        //QPixmap pixmap(400, 400);
+        //pixmap.fill(Qt::white);
+
+        // 创建 QPainter 并开始在 QPixmap 上绘制
+        QPainter painter(&pix);
+
+        // 设置画笔颜色和宽度
+        QPen pen;
+        pen.setWidth(4);  // 线条宽度
+
+        // 绘制圆
+        pen.setColor(Qt::green);  // 蓝色
+        painter.setPen(pen);
+        painter.drawEllipse(point.needle_point, point.needle_radius, point.needle_radius);  // 绘制半径为50的圆
+        if(point.needle_x != 0)
+        {
+            painter.drawLine(QPoint(point.needle_x, 0), QPoint(point.needle_x, pix.height()));
+        }
+        painter.end();
+    }
+    void drawNeedlePoint(OutputData::NeedleTargetLocation point, cv::Mat& mat)
+    {
+        //LOG_INFO("*****************drawUltraPoint");
+        // 创建一个空白图像（400x400，3通道，黑色背景）
+        cv::Mat& image = mat;//cv::Mat::zeros(400, 400, CV_8UC3);
+        // 定义中心点
+        cv::Point center(/*200*/point.needle_point.x(), /*200*/point.needle_point.y());  // 图像中心坐标
+        // 绘制一个圆 (中心点，半径，颜色，线宽)
+        cv::circle(image, center, point.needle_radius, cv::Scalar(255, 0, 0), 4);  // 绿色圆，半径50，线宽2
+        //cv::circle(image, center, 20, cv::Scalar(255, 0, 0), 4);  // 绿色圆，半径50，线宽2 //针的位置
+        if(point.needle_x != 0)
+        {
+            cv::line(mat, cv::Point(point.needle_x, 0), cv::Point(point.needle_x, mat.rows), cv::Scalar(255, 0, 0), 2, 2, 0);
+        }
+    }
+
+
     void IRPointOverlay(QPixmap& pix)
     {
         lock_guard<mutex> lock(m_output_display_mutex);
@@ -320,8 +407,8 @@ public:
     void TextOverlay(QPixmap& pix)
     {
         lock_guard<mutex> lock(m_output_display_mutex);
-        int x = 50;
-        int y = 50;
+        int x = 10;
+        int y = 20;
         QPainter painter(&pix);
         painter.setFont(QFont("Arial", m_font_size));     // 设置字体和字号
 
@@ -391,10 +478,10 @@ public:
     {
         lock_guard<mutex> lock(m_output_display_mutex);
         //文字左下角的坐标
-        int x = 50;
-        int y = 50;
+        int x = 10;
+        int y = 20;
         int         fontFace  = cv::FONT_HERSHEY_SIMPLEX;
-        double      fontScale = 1;
+        double      fontScale = 2;
         int         thickness = 2;
         int point_y = 0;
 
@@ -476,6 +563,27 @@ public:
         }
     }
 
+    void TextOverlay(const string &text, QPixmap &pix)
+    {
+        //lock_guard<mutex> lock(m_output_display_mutex);
+        // 创建一个 QFont 对象并设置字体属性
+        QFont font("微软雅黑"/*"Arial"*/, 72);
+        font.setBold(true);           // 设置为粗体
+        font.setPointSize(72);        // 设置字体大小为 60 号
+        QPainter painter(&pix);
+        painter.setFont(font);       // 设置字体和字号
+        painter.setPen(QColor("#2ebace"));    // 设置画笔颜色
+        //painter.setPen(QColor(Qt::red));    // 设置画笔颜色
+        QSize textsize = textSize(text.c_str(), 72);//painter.fontMetrics().height();    // 文字高度 // 文字宽度
+        QPoint textpoint(((pix.width() - textsize.width())/2), (pix.height() - textsize.height() + 80));
+        //LOG_INFO("text point:x={}, y={}", textpoint.x(), textpoint.y());
+        QRect rect(textpoint.x()-20, textpoint.y()-90, textsize.width()+40, textsize.height());
+        // 设置背景色
+        painter.fillRect(rect, Qt::white);  // 先填充背景
+        painter.drawText(textpoint, text.c_str());
+        painter.end();
+    }
+
     void drawCenterPoint(int x, int y, QPixmap& pix)
     {
         //QPainter painter(&pix);
@@ -509,7 +617,7 @@ public:
         painter.end();
     }
 
-    void drawCenterPoint(int x, int y, cv::Mat& mat)
+    void drawCenterPoint(int x, int y, cv::Scalar color, cv::Mat& mat)
     {
         // 创建一个空白图像（400x400，3通道，黑色背景）
         cv::Mat& image = mat;//cv::Mat::zeros(400, 400, CV_8UC3);
@@ -518,14 +626,14 @@ public:
         cv::Point center(/*200*/x, /*200*/y);  // 图像中心坐标
 
         // 绘制一个圆 (中心点，半径，颜色，线宽)
-        cv::circle(image, center, 50, cv::Scalar(0, 255, 0), 2);  // 绿色圆，半径50，线宽2
+        cv::circle(image, center, 50, color/*cv::Scalar(0, 255, 0)*/, 2);  // 绿色圆，半径50，线宽2
 
         // 绘制一个十字架
         int cross_size = 50;  // 十字架的长度
         // 水平线
-        cv::line(image, cv::Point(center.x - cross_size, center.y), cv::Point(center.x + cross_size, center.y), cv::Scalar(0, 255, 0), 2); // 蓝色水平线
+        cv::line(image, cv::Point(center.x - cross_size, center.y), cv::Point(center.x + cross_size, center.y), color/*cv::Scalar(0, 255, 0)*/, 2); // 蓝色水平线
         // 垂直线
-        cv::line(image, cv::Point(center.x, center.y - cross_size), cv::Point(center.x, center.y + cross_size), cv::Scalar(0, 255, 0), 2); // 蓝色垂直线
+        cv::line(image, cv::Point(center.x, center.y - cross_size), cv::Point(center.x, center.y + cross_size), color/*cv::Scalar(0, 255, 0)*/, 2); // 蓝色垂直线
     }
 
     void drawCenterLine(int x, QPixmap& pix)
@@ -564,6 +672,14 @@ public:
         return textSize;
     }
 
+    QSize textSize(const QString& text, int fontsize)
+    {
+        QFont font("Arial", /*20*/fontsize);
+        QFontMetrics metrics(font);
+        QSize textSize = metrics.size(Qt::TextSingleLine, text);
+        return textSize;
+    }
+
     bool QRCodeCheck(const QString &text)
     {
         bool bState;
@@ -589,8 +705,9 @@ public:
     void ClearDisplayData()
     {
         lock_guard<mutex> lock(m_output_display_mutex);        
-        m_output_data.ir_location          = OutputData::IRTargetLocation();
-        m_output_data.ultra_location.point = QPoint(0, 0);
+        m_output_data.ir_location                  = OutputData::IRTargetLocation();
+        m_output_data.ultra_location.point         = QPoint(0, 0);
+        m_output_data.needle_location.needle_point = QPoint(0, 0);
         m_output_data.info.clear();
         m_output_data.fail_info.clear();
         m_output_data.success_info.clear();

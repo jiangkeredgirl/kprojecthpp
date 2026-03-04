@@ -23,7 +23,7 @@ inline static void GetStringSize(HDC hDC, const char* str, int* w, int* h)
 	if (h != 0) *h = size.cy;
 }
 
-inline static void putTextHusky(const Mat &dst, const char* str, Point org, Scalar color, int fontSize, const char* fn, bool italic, bool underline)//后俩参数：斜体，下划线
+inline static void putTextHusky(const Mat &dst, const char* str, Point org, Scalar color, int dc_font_scale, const char* fn, bool italic, bool underline)//后俩参数：斜体，下划线
 {
 	CV_Assert(dst.data != 0 && (dst.channels() == 1 || dst.channels() == 3));
 
@@ -33,7 +33,7 @@ inline static void putTextHusky(const Mat &dst, const char* str, Point org, Scal
 	y = org.y < 0 ? -org.y : 0;
 
 	LOGFONTA lf;
-    lf.lfHeight = -36/*fontSize*/;
+    lf.lfHeight = dc_font_scale;
 	lf.lfWidth = 0;
 	lf.lfEscapement = 0;
 	lf.lfOrientation = 0;
@@ -152,7 +152,7 @@ inline static void putTextHusky(const Mat &dst, const char* str, Point org, Scal
 }
 
 
-inline static void addTextToImage(const cv::Mat& image, const std::string& text, cv::Point text_org, double font_scale, cv::Scalar color, int max_width = 0)
+inline static void addTextToImage(const cv::Mat& image, const std::string& text, cv::Point text_org, double cv_font_scale, double dc_font_scale, cv::Scalar color, int max_width = 0)
 {
     int font_face = cv::FONT_HERSHEY_SIMPLEX;
     //double font_scale = 1.0;
@@ -175,7 +175,7 @@ inline static void addTextToImage(const cv::Mat& image, const std::string& text,
         std::string test_line = line + (line.empty() ? "" : " ") + words[i];
 
         // Calculate the text size if we add the next word
-        int text_width = cv::getTextSize(test_line, font_face, font_scale, thickness, &baseline).width;
+        int text_width = cv::getTextSize(test_line, font_face, cv_font_scale, thickness, &baseline).width;
 
         // If the width is within the maximum width, add the word to the line
         if (text_width < max_width || max_width == 0) {
@@ -183,10 +183,10 @@ inline static void addTextToImage(const cv::Mat& image, const std::string& text,
         }
         else {
             // Draw the current line
-            cv::putText(image, line, current_org, font_face, font_scale, color, thickness);
+            cv::putText(image, line, current_org, font_face, cv_font_scale, color, thickness);
 
             // Move the y-coordinate down for the next line
-            current_org.y += cv::getTextSize(line, font_face, font_scale, thickness, &baseline).height + 5;
+            current_org.y += cv::getTextSize(line, font_face, cv_font_scale, thickness, &baseline).height + 5;
 
             // Start a new line with the current word
             line = words[i];
@@ -197,7 +197,7 @@ inline static void addTextToImage(const cv::Mat& image, const std::string& text,
     if (!line.empty())
     {
         //cv::putText(image, line, current_org, font_face, font_scale, cv::Scalar(0, 255, 0), thickness);
-        putTextHusky(image, utf8tolocal(line).c_str(), current_org, color, font_scale, "微软雅黑", false, false);
+        putTextHusky(image, utf8tolocal(line).c_str(), current_org, color, dc_font_scale, "微软雅黑", false, false);
     }
 }
 

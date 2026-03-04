@@ -59,6 +59,7 @@ public:
     inline static const char* 确认穿刺            = QT_TR_NOOP("确认穿刺");
     inline static const char* 放弃穿刺            = QT_TR_NOOP("放弃穿刺");
     inline static const char* 请扫描二维码         = QT_TR_NOOP("请扫描二维码");
+    inline static const char* 请重新扫描二维码     = QT_TR_NOOP("采血者姓名字符无效\n请重新扫描二维码");
     inline static const char* 采血准备            = QT_TR_NOOP("采血准备");
     inline static const char* 红外扫查            = QT_TR_NOOP("红外扫查");
     inline static const char* 超声穿刺            = QT_TR_NOOP("超声穿刺");
@@ -79,6 +80,7 @@ public:
     inline static const char* 正在执行退针                = QT_TR_NOOP("正在执行退针...");
     inline static const char* 退针完成                   = QT_TR_NOOP("退针完成");
     inline static const char* 退针异常                   = QT_TR_NOOP("退针异常");
+    inline static const char* 退针终止                   = QT_TR_NOOP("退针终止");
     inline static const char* 正在移动到拍照点            = QT_TR_NOOP("正在移动到拍照点...");
     inline static const char* 正在释放压脉带              = QT_TR_NOOP("正在释放压脉带...");
     inline static const char* 正在移动臂托把手            = QT_TR_NOOP("正在移动臂托把手...");
@@ -121,8 +123,11 @@ public:
     inline static const char* 停止红外采集失败             = QT_TR_NOOP("停止红外采集失败");
     inline static const char* 启动超声采集失败             = QT_TR_NOOP("启动超声采集失败");
     inline static const char* 设备启动失败                = QT_TR_NOOP("设备启动失败！");
+    inline static const char* 设备终止启动                = QT_TR_NOOP("设备终止启动！");
     inline static const char* 不在穿刺阶段退针按钮无效       = QT_TR_NOOP("不在穿刺阶段，退针按钮无效");
     inline static const char* 复位失败                    = QT_TR_NOOP("复位失败");
+    inline static const char* 复位终止                    = QT_TR_NOOP("复位终止");
+    inline static const char* 正在退针                    = QT_TR_NOOP("正在退针！");
     inline static const char* 请确定退针完成               = QT_TR_NOOP("请确定退针完成！");
     inline static const char* 请确定止血完成               = QT_TR_NOOP("请确定止血完成！");
     inline static const char* 等待安装卡膜                 = QT_TR_NOOP("等待安装卡膜");
@@ -150,6 +155,7 @@ public:
     inline static const char* 移动到途径点异常               = QT_TR_NOOP("移动到途径点异常");
     inline static const char* 移动到途径点成功               = QT_TR_NOOP("移动到途径点成功");
     inline static const char* 采血针安装错误                 = QT_TR_NOOP("采血针安装错误");
+    inline static const char* 设备正在初始化                 = QT_TR_NOOP("设备正在初始化");
 
     inline static const char* xxxxx                   = QT_TR_NOOP("xxxxx");
 };

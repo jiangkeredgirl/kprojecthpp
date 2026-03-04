@@ -24,20 +24,22 @@ public:
     {
         if (status)
         {
-            cout << "connect failed, status:" << status << endl;
-            LOG_WARN("connect failed, status:{}", status);
-            if(m_thread_connect.joinable())
+            if (status != 10056)
             {
-                m_thread_connect.join();
+                cout << "connect failed, status:" << status << endl;
+                LOG_WARN("connect failed, status:{}", status);
+                if(m_thread_connect.joinable())
+                {
+                    m_thread_connect.join();
+                }
+                std::thread t([this]()
+                              {
+                                  std::this_thread::sleep_for(std::chrono::milliseconds(3000));
+                                  LOG_WARN("重新连接 {}", m_ip);
+                                  m_tcp_client->AsyncTcpConnect(m_ip, m_port);
+                              });
+                t.detach();
             }
-            std::thread t([this]()
-                          {
-                              std::this_thread::sleep_for(std::chrono::milliseconds(3000));
-                              LOG_WARN("重新连接 {}", m_ip);
-                              m_tcp_client->AsyncTcpConnect(m_ip, m_port);
-                          });
-            t.detach();
-
         }
         else
         {

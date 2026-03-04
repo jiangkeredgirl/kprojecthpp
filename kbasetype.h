@@ -173,10 +173,12 @@ struct NeedlePosDetectionFrame
 
 struct NeedlePosDetectionCaptureFrame
 {
-    cv::Mat mat_horizontal;      //< 水平拍摄的图片
-    cv::Mat mat_tilt;            //< 倾斜角度拍摄的照片
-    std::string file_horizontal; //< 图片保存路径
-    std::string file_tilt;       //< 图片保存路径
+    cv::Mat mat_horizontal;             //< 水平拍摄的图片
+    cv::Mat mat_tilt;                   //< 倾斜角度拍摄的照片
+    cv::Mat mat_horizontal_result;      //< 水平拍摄的图片
+    std::string file_horizontal;        //< 图片保存路径
+    std::string file_tilt;              //< 图片保存路径
+    std::string file_horizontal_result; //< 图片保存路径
 };
 
 struct SerialPortCfg
@@ -339,6 +341,7 @@ inline static map<int, string> g_modbus_command_code{
 
     {MOD_CMD_ID_BAND_VERSION,                          "04 03 50 00 00 05"}, //  94 9C
     {MOD_CMD_ID_BAND_BOARD_NAME,                       "04 03 50 01 00 05"}, //  C5 5C
+    {MOD_CMD_ID_BAND_BOARD_RESET,                      "04 06 50 02 00 01"}, //  F8 9F
     {MOD_CMD_ID_BAND_MOTOR0_MODULE_ENABLE,             "04 06 10 00 00 01"}, //  4C 9F
     {MOD_CMD_ID_BAND_MOTOR0_MODULE_DISABLE,            "04 06 10 00 00 00"}, //  8D 5F
     {MOD_CMD_ID_BAND_MOTOR0_HOMING_ENABLE,             "04 06 10 01 00 01"}, //  1D 5F
@@ -374,8 +377,8 @@ inline static map<int, string> g_modbus_command_code{
     {MOD_CMD_ID_BAND_IRLIGHT_850_SET_BRIGHT,           "04 06 40 01 00 14"}, //  CD 90
     {MOD_CMD_ID_BAND_IRLIGHT_940_SET_BRIGHT,           "04 06 40 02 00 14"}, //  3D 90
 
-    {MOD_CMD_ID_KEY_POWER_GET_STATUS,                  "04 03 10 00 00"}, // D4 41
-    {MOD_CMD_ID_KEY_POWER_SET_STATUS,                  "04 06 10 00 01"}, // 8B C6
+    {MOD_CMD_ID_KEY_BOOT_GET_STATUS,                   ""}, //
+    {MOD_CMD_ID_KEY_BOOT_SET_STATUS,                   ""}, //
     {MOD_CMD_ID_KEY_STOP_GET_STATUS,                   ""}, //
     {MOD_CMD_ID_KEY_STOP_SET_STATUS,                   ""}, //
     {MOD_CMD_ID_KEY_RESET_GET_STATUS,                  ""}, //
@@ -384,14 +387,17 @@ inline static map<int, string> g_modbus_command_code{
     {MOD_CMD_ID_KEY_LOOSEN_SET_STATUS,                 ""}, //
     {MOD_CMD_ID_KEY_REFUND_GET_STATUS,                 ""}, //
     {MOD_CMD_ID_KEY_REFUND_SET_STATUS,                 ""}, //
-    {MOD_CMD_ID_KEY_URGENTSTOP_GET_STATUS,             "04 03 0C 00 00"}, // 35 D4  //< 急停状态
-    {MOD_CMD_ID_KEY_URGENTSTOP_SET_STATUS,             "04 06 0C 00 01"}, // 8B C6  //< 急停按下/抬起
+    {MOD_CMD_ID_KEY_URGENTSTOP_GET_STATUS,             ""}, //
+    {MOD_CMD_ID_KEY_URGENTSTOP_SET_STATUS,             ""}, //
     {MOD_CMD_ID_KEY_ULTR_POWER_GET_STATUS,             "04 03 01 00 00"}, // 84 44  //< 超声开启状态
     {MOD_CMD_ID_KEY_ULTR_POWER_SET_STATUS,             "04 06 01 00 01"}, // 89 CA  //< 超声开启/关闭
     {MOD_CMD_ID_KEY_PUNC_POWER_GET_STATUS,             "04 03 02 00 00"}, // 74 44  //< 穿刺开启状态
     {MOD_CMD_ID_KEY_PUNC_POWER_SET_STATUS,             "04 06 02 00 01"}, // 49 CB  //< 穿刺开启/关闭
     {MOD_CMD_ID_KEY_REST_POWER_GET_STATUS,             "04 03 03 00 00"}, // 25 84  //< 压脉开启状态
     {MOD_CMD_ID_KEY_REST_POWER_SET_STATUS,             "04 06 03 00 01"}, // A8 0B  //< 压脉开启/关闭
+    {MOD_CMD_ID_KEY_SHUTDOWN_FLAG_GET_STATUS,          ""}, // 04 03 10 00 00 D4 41  //< 关机标记状态
+    {MOD_CMD_ID_KEY_SHUTDOWN_FLAG_SET_STATUS,          "04 06 10 00 01"}, // 8B C6  //< 关机标记设置
+
     {MOD_CMD_ID_LASERDISTANCE_GET_DISTANCE,            "01 04 00 00 00 02"}, // 71 CB  //< 获取激光测距的距离
 
 };
@@ -399,7 +405,7 @@ inline static map<int, string> g_modbus_command_code{
 
 
 inline static map<int, int> g_physicalkey_get_code{
-    {PHYSICALKEY_ID_POWER,                        MOD_CMD_ID_KEY_POWER_GET_STATUS},
+    {PHYSICALKEY_ID_BOOT,                         MOD_CMD_ID_KEY_BOOT_GET_STATUS},
     {PHYSICALKEY_ID_STOP,                         MOD_CMD_ID_KEY_STOP_GET_STATUS},
     {PHYSICALKEY_ID_RESET,                        MOD_CMD_ID_KEY_RESET_GET_STATUS},
     {PHYSICALKEY_ID_LOOSEN,                       MOD_CMD_ID_KEY_LOOSEN_GET_STATUS},
@@ -410,12 +416,11 @@ inline static map<int, int> g_physicalkey_get_code{
     {PHYSICALKEY_ID_ULTR_CONNECT_VIRTUAL_KEY,     MOD_CMD_ID_KEY_ULTR_POWER_GET_STATUS},
     {PHYSICALKEY_ID_PUNC_POWER_VIRTUAL_KEY,       MOD_CMD_ID_KEY_PUNC_POWER_GET_STATUS},
     {PHYSICALKEY_ID_REST_POWER_VIRTUAL_KEY,       MOD_CMD_ID_KEY_REST_POWER_GET_STATUS},
-
-
+    {PHYSICALKEY_ID_SHUTDOWN_FLAG_VIRTUAL_KEY,    MOD_CMD_ID_KEY_SHUTDOWN_FLAG_GET_STATUS},
 };
 
 inline static map<int, int> g_physicalkey_set_code{
-    {PHYSICALKEY_ID_POWER,                        MOD_CMD_ID_KEY_POWER_SET_STATUS},
+    {PHYSICALKEY_ID_BOOT,                         MOD_CMD_ID_KEY_BOOT_SET_STATUS},
     {PHYSICALKEY_ID_STOP,                         MOD_CMD_ID_KEY_STOP_SET_STATUS},
     {PHYSICALKEY_ID_RESET,                        MOD_CMD_ID_KEY_RESET_SET_STATUS},
     {PHYSICALKEY_ID_LOOSEN,                       MOD_CMD_ID_KEY_LOOSEN_SET_STATUS},
@@ -424,17 +429,19 @@ inline static map<int, int> g_physicalkey_set_code{
     {PHYSICALKEY_ID_ULTR_POWER_VIRTUAL_KEY,       MOD_CMD_ID_KEY_ULTR_POWER_SET_STATUS},
     {PHYSICALKEY_ID_PUNC_POWER_VIRTUAL_KEY,       MOD_CMD_ID_KEY_PUNC_POWER_SET_STATUS},
     {PHYSICALKEY_ID_REST_POWER_VIRTUAL_KEY,       MOD_CMD_ID_KEY_REST_POWER_SET_STATUS},
+    {PHYSICALKEY_ID_SHUTDOWN_FLAG_VIRTUAL_KEY,    MOD_CMD_ID_KEY_SHUTDOWN_FLAG_SET_STATUS},
 };
 
 inline static map<int, int> g_physicalkey_id_band_to_app{
     {0x01,                     PHYSICALKEY_ID_ULTR_POWER_VIRTUAL_KEY},
     {0x02,                     PHYSICALKEY_ID_PUNC_POWER_VIRTUAL_KEY},
     {0x03,                     PHYSICALKEY_ID_REST_POWER_VIRTUAL_KEY},
+    {0x10,                     PHYSICALKEY_ID_SHUTDOWN_FLAG_VIRTUAL_KEY},
     {0x07,                     PHYSICALKEY_ID_REFUND},
     {0x08,                     PHYSICALKEY_ID_STOP},
     {0x09,                     PHYSICALKEY_ID_RESET},
     {0x0a,                     PHYSICALKEY_ID_LOOSEN},
-    {0x0b,                     PHYSICALKEY_ID_POWER},
+    {0x0b,                     PHYSICALKEY_ID_BOOT},
     {0x0c,                     PHYSICALKEY_ID_URGENTSTOP}
 };
 
@@ -442,10 +449,11 @@ inline static map<int, int> g_physicalkey_id_app_to_band{
     {PHYSICALKEY_ID_ULTR_POWER_VIRTUAL_KEY,        0x01},
     {PHYSICALKEY_ID_PUNC_POWER_VIRTUAL_KEY,        0x02},
     {PHYSICALKEY_ID_REST_POWER_VIRTUAL_KEY,        0x03},
+    {PHYSICALKEY_ID_SHUTDOWN_FLAG_VIRTUAL_KEY,     0x10},
     {PHYSICALKEY_ID_REFUND,                        0x07},
     {PHYSICALKEY_ID_STOP,                          0x08},
     {PHYSICALKEY_ID_RESET,                         0x09},
     {PHYSICALKEY_ID_LOOSEN,                        0x0a},
-    {PHYSICALKEY_ID_POWER,                         0x0b},
+    {PHYSICALKEY_ID_BOOT,                          0x0b},
     {PHYSICALKEY_ID_URGENTSTOP,                    0x0c}
 };

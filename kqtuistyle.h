@@ -309,53 +309,21 @@ static const string sampling_step_title_label_style =
 /// radiobutton style 解决 窗口失去焦点后  radiobutton 样式有变化的bug
 static const string sampling_radiobutton_style =
     R"(
-        QRadioButton {
-            spacing: 5px;
-            color: black;
-            background-color: transparent;
-        }
+    QRadioButton::indicator:checked,
+    QRadioButton::indicator:checked:focus,
+    QRadioButton::indicator:checked:!focus {
+    width: 14px;
+    height: 14px;
+    border-radius: 7px;
+    border: 2px solid #0078D7;
+    background-color: #0078D7;}
+    )"
+    ;
 
-        QRadioButton::indicator {
-            width: 13px;
-            height: 13px;
-        }
-
-        QRadioButton::indicator:unchecked {
-            border: 2px solid #999999;
-            border-radius: 7px;
-            background-color: white;
-        }
-
-        QRadioButton::indicator:unchecked:hover {
-            border: 2px solid #0078D7;
-        }
-
-        QRadioButton::indicator:checked {
-            border: 2px solid #0078D7;
-            border-radius: 7px;
-            background-color: white;
-        }
-
-        QRadioButton::indicator:checked:hover {
-            border: 2px solid #005A9E;
-        }
-
-        QRadioButton::indicator:checked::after {
-            content: "";
-            display: block;
-            width: 7px;
-            height: 7px;
-            margin: 3px;
-            border-radius: 4px;
-            background-color: #0078D7;
-        }
-
-        /* 重点：移除焦点状态的虚线框 */
-        QRadioButton:focus {
-            outline: none;
-        }
-
-        QRadioButton::indicator:focus {
-            border: 2px solid #0078D7;
-        }
-    )";
+static const string label_picture_style =
+    "QLabel{"
+    "border:1px solid black;"
+    "background-color:black;"
+    "qproperty-alignment:AlignCenter;"
+    "qproperty-scaledContents:false;"
+    "}";

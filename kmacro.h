@@ -30,7 +30,7 @@ using namespace std;
 #define DEVICE_MOTOR_ENABLED_TIME         (1000)     //< 电机使能后等待时间1秒
 #define DEVICE_MOTOR_HOME_TIME            (5000)     //< 电机找零后等待时间5秒
 #define DEVICE_ARMREST_MOTOR_HOME_TIME    (5000)     //< 臂托电机找零后等待时间50秒
-#define DEVICE_MOTOR_MOVED_TIME           (3000)     //< 电机运转后等待时间3秒
+#define DEVICE_MOTOR_MOVED_TIME           (1000)     //< 电机运转后等待时间1秒
 #define DEVICE_MOTOR_MOVED_DEVIATION      (1)        //< 电机误差2毫米，建议1毫米
 #define DEVICE_IMAGE_TIMEOUT              (300000)   //< 获取摄像头和超声图片的超时时间
 #define SHOW_MSG_TIME                     (5000)     //< 消息弹框显示时间 ms
@@ -77,10 +77,14 @@ using namespace std;
 enum EnumStateMachine
 {
     MACHINE_STATE_UNKNOWN = ENUM_NUM_BASE + __LINE__,    //< 状态机状态未知
+    MACHINE_STATE_INITING,                               //< 状态机状态初始化
     MACHINE_STATE_IDLE,                                  //< 状态机状态空闲
     MACHINE_STATE_ERROR,                                 //< 状态机状态错误
     MACHINE_STATE_STOP,                                  //< 状态机状态停止
     MACHINE_STATE_URGENTSTOP,                            //< 状态机状态急停
+    MACHINE_STATE_RESETING,                              //< 状态机状态复位
+    MACHINE_STATE_CANCEL,                                //< 状态机状态取消
+    MACHINE_STATE_EXIT_NEEDLE,                           //< 状态机状态退针
     MACHINE_STATE_PREPARE,                               //< 状态机状态采血准备
     MACHINE_STATE_BAND,                                  //< 状态机状态压脉带
     MACHINE_STATE_IR,                                    //< 状态机状态红外图像
@@ -275,7 +279,9 @@ enum EnumNirDeviceOperaID
     NIRDEVICE_OPERAID_FRAME,                                      //< 近红外图像帧
     NIRDEVICE_OPERAID_CAPTURE,                                    //< 近红外图像采集
     NIRDEVICE_OPERAID_REQUEST_OPEN_LIGHT,                         //< 近红外请求打开补光灯
-    NIRDEVICE_OPERAID_REQUEST_CLOSE_LIGHT                         //< 近红请求关闭补光灯
+    NIRDEVICE_OPERAID_REQUEST_CLOSE_LIGHT,                        //< 近红请求关闭补光灯
+    NIRDEVICE_OPERAID_OPENED_LASER,                               //< 激光已打开
+    NIRDEVICE_OPERAID_CLOSED_LASER                                //< 激光已关闭
 };
 
 enum EnumNirDeviceFrameMode
@@ -379,6 +385,7 @@ enum ModbusPressureBandCommandID
     /// 板卡信息
     MOD_CMD_ID_BAND_VERSION = ENUM_NUM_BASE + __LINE__,//< 版本号
     MOD_CMD_ID_BAND_BOARD_NAME,                        //< 板卡名
+    MOD_CMD_ID_BAND_BOARD_RESET,                       //< 板块复位
     ///电机0写入
     MOD_CMD_ID_BAND_MOTOR0_MODULE_ENABLE,              //< 电机0模块使能
     MOD_CMD_ID_BAND_MOTOR0_MODULE_DISABLE,             //< 电机0模块失能
@@ -423,7 +430,8 @@ enum ModbusPressureBandCommandID
 /// 物理按键ID定义
 enum PhysicalKeyID
 {
-    PHYSICALKEY_ID_POWER = ENUM_NUM_BASE + __LINE__,      //< 开关按键
+    PHYSICALKEY_ID_UNKNOWN = ENUM_NUM_BASE + __LINE__,      //< 未知按键
+    PHYSICALKEY_ID_BOOT,                      //< 启动按键
     PHYSICALKEY_ID_STOP,                      //< 停止按键
     PHYSICALKEY_ID_RESET,                     //< 复位按键
     PHYSICALKEY_ID_LOOSEN,                    //< 释放压脉按键
@@ -434,14 +442,15 @@ enum PhysicalKeyID
     PHYSICALKEY_ID_ULTR_CONNECT_VIRTUAL_KEY,  //< 超声连接/断开虚拟按键
     PHYSICALKEY_ID_PUNC_POWER_VIRTUAL_KEY,    //< 穿刺开启/关闭虚拟按键
     PHYSICALKEY_ID_REST_POWER_VIRTUAL_KEY,    //< 压脉开启/关闭虚拟按键
-
+    PHYSICALKEY_ID_SHUTDOWN_FLAG_VIRTUAL_KEY, //< 关机标记虚拟按键
 };
 
 /// 物理按键modbus定义
 enum ModbusPhysicalKeyCommandID
 {
-    MOD_CMD_ID_KEY_POWER_GET_STATUS = ENUM_NUM_BASE + __LINE__,      //< 开关按键状态
-    MOD_CMD_ID_KEY_POWER_SET_STATUS,        //< 开关按键按下
+    MOD_CMD_ID_KEY_UNKNOWN = ENUM_NUM_BASE + __LINE__,      //< 未知命令
+    MOD_CMD_ID_KEY_BOOT_GET_STATUS,         //< 启动按键状态
+    MOD_CMD_ID_KEY_BOOT_SET_STATUS,         //< 启动按键按下
     MOD_CMD_ID_KEY_STOP_GET_STATUS,         //< 停止按键状态
     MOD_CMD_ID_KEY_STOP_SET_STATUS,         //< 停止按键按下
     MOD_CMD_ID_KEY_RESET_GET_STATUS,        //< 复位按键状态
@@ -457,7 +466,9 @@ enum ModbusPhysicalKeyCommandID
     MOD_CMD_ID_KEY_PUNC_POWER_GET_STATUS,   //< 穿刺开启状态
     MOD_CMD_ID_KEY_PUNC_POWER_SET_STATUS,   //< 穿刺开启/关闭
     MOD_CMD_ID_KEY_REST_POWER_GET_STATUS,   //< 压脉开启状态
-    MOD_CMD_ID_KEY_REST_POWER_SET_STATUS    //< 压脉开启/关闭
+    MOD_CMD_ID_KEY_REST_POWER_SET_STATUS,   //< 压脉开启/关闭
+    MOD_CMD_ID_KEY_SHUTDOWN_FLAG_GET_STATUS,//< 关机标记状态
+    MOD_CMD_ID_KEY_SHUTDOWN_FLAG_SET_STATUS //< 关机标记设置
 };
 
 
@@ -579,10 +590,14 @@ inline string EnumStr(int enumvalue)
 	switch (enumvalue)
 	{
         ENUM_NAME_VALUE_FEILD_STR_CASE(MACHINE_STATE_UNKNOWN,                           enumvalue);
+        ENUM_NAME_VALUE_FEILD_STR_CASE(MACHINE_STATE_INITING,                           enumvalue, "状态机状态:初始化");
         ENUM_NAME_VALUE_FEILD_STR_CASE(MACHINE_STATE_IDLE,                              enumvalue, "状态机状态:空闲");
         ENUM_NAME_VALUE_FEILD_STR_CASE(MACHINE_STATE_ERROR,                             enumvalue, "状态机状态:错误");
         ENUM_NAME_VALUE_FEILD_STR_CASE(MACHINE_STATE_STOP,                              enumvalue, "状态机状态:停止");
         ENUM_NAME_VALUE_FEILD_STR_CASE(MACHINE_STATE_URGENTSTOP,                        enumvalue, "状态机状态:急停");
+        ENUM_NAME_VALUE_FEILD_STR_CASE(MACHINE_STATE_RESETING,                          enumvalue, "状态机状态:复位");
+        ENUM_NAME_VALUE_FEILD_STR_CASE(MACHINE_STATE_CANCEL,                            enumvalue, "状态机状态:取消");
+        ENUM_NAME_VALUE_FEILD_STR_CASE(MACHINE_STATE_EXIT_NEEDLE,                       enumvalue, "状态机状态:退针");
         ENUM_NAME_VALUE_FEILD_STR_CASE(MACHINE_STATE_PREPARE,                           enumvalue, "状态机状态:采血准备");
         ENUM_NAME_VALUE_FEILD_STR_CASE(MACHINE_STATE_BAND,                              enumvalue, "状态机状态:压脉带");
         ENUM_NAME_VALUE_FEILD_STR_CASE(MACHINE_STATE_IR,                                enumvalue, "状态机状态:红外图像");
@@ -641,6 +656,8 @@ inline string EnumStr(int enumvalue)
         ENUM_NAME_VALUE_FEILD_STR_CASE(NIRDEVICE_OPERAID_CAPTURE,                       enumvalue, "近红外图像采集");
         ENUM_NAME_VALUE_FEILD_STR_CASE(NIRDEVICE_OPERAID_REQUEST_OPEN_LIGHT,            enumvalue, "近红外请求打开补光灯");
         ENUM_NAME_VALUE_FEILD_STR_CASE(NIRDEVICE_OPERAID_REQUEST_CLOSE_LIGHT,           enumvalue, "近红请求关闭补光灯");
+        ENUM_NAME_VALUE_FEILD_STR_CASE(NIRDEVICE_OPERAID_OPENED_LASER,                  enumvalue, "激光已打开");
+        ENUM_NAME_VALUE_FEILD_STR_CASE(NIRDEVICE_OPERAID_CLOSED_LASER,                  enumvalue, "激光已关闭");
         ENUM_NAME_VALUE_FEILD_STR_CASE(NIRDEVICE_FRAME_MODE_IR,                         enumvalue, "红外模式");
         ENUM_NAME_VALUE_FEILD_STR_CASE(NIRDEVICE_FRAME_MODE_DEPTH,                      enumvalue, "深度模式D2C模式");
         ENUM_NAME_VALUE_FEILD_STR_CASE(USERPERMISSION_OPERATOR,                         enumvalue, "操作员权限");
@@ -714,6 +731,7 @@ inline string EnumStr(int enumvalue)
         ENUM_NAME_VALUE_FEILD_STR_CASE(MOD_CMD_ID_REST_MOTOR1_MODULE_GET_POS,           enumvalue, "电机1获取手把位置");
         ENUM_NAME_VALUE_FEILD_STR_CASE(MOD_CMD_ID_BAND_VERSION,                         enumvalue, "版本号");
         ENUM_NAME_VALUE_FEILD_STR_CASE(MOD_CMD_ID_BAND_BOARD_NAME,                      enumvalue, "板卡名");
+        ENUM_NAME_VALUE_FEILD_STR_CASE(MOD_CMD_ID_BAND_BOARD_RESET,                     enumvalue, "板卡复位");
         ENUM_NAME_VALUE_FEILD_STR_CASE(MOD_CMD_ID_BAND_MOTOR0_MODULE_ENABLE,            enumvalue, "电机0模块使能");
         ENUM_NAME_VALUE_FEILD_STR_CASE(MOD_CMD_ID_BAND_MOTOR0_MODULE_DISABLE,           enumvalue, "电机0模块失能");
         ENUM_NAME_VALUE_FEILD_STR_CASE(MOD_CMD_ID_BAND_MOTOR0_HOMING_ENABLE,            enumvalue, "电机0找零使能");
@@ -737,7 +755,7 @@ inline string EnumStr(int enumvalue)
         ENUM_NAME_VALUE_FEILD_STR_CASE(MOD_CMD_ID_BAND_MOTOR2_MODULE_ENABLE,            enumvalue, "电机2模块使能");
         ENUM_NAME_VALUE_FEILD_STR_CASE(MOD_CMD_ID_BAND_MOTOR2_MODULE_DISABLE,           enumvalue, "电机2模块失能");
         ENUM_NAME_VALUE_FEILD_STR_CASE(MOD_CMD_ID_BAND_MOTOR2_HOMING_ENABLE,            enumvalue, "电机2找零使能");
-        ENUM_NAME_VALUE_FEILD_STR_CASE(MOD_CMD_ID_BAND_MOTOR2_HOMING_DISABLE,           enumvalue, "电机2找零使能");
+        ENUM_NAME_VALUE_FEILD_STR_CASE(MOD_CMD_ID_BAND_MOTOR2_HOMING_DISABLE,           enumvalue, "电机2找零失能");
         ENUM_NAME_VALUE_FEILD_STR_CASE(MOD_CMD_ID_BAND_MOTOR2_MODULE_SET_POS_RANGE,     enumvalue, "电机2设置手把位置范围");
         ENUM_NAME_VALUE_FEILD_STR_CASE(MOD_CMD_ID_BAND_MOTOR2_MODULE_SET_POS,           enumvalue, "电机2设置手把位置");
         ENUM_NAME_VALUE_FEILD_STR_CASE(MOD_CMD_ID_BAND_MOTOR2_HOMING_GET_STATUS,        enumvalue, "电机2找零状态获取");
@@ -748,7 +766,7 @@ inline string EnumStr(int enumvalue)
         ENUM_NAME_VALUE_FEILD_STR_CASE(MOD_CMD_ID_BAND_IRLIGHT_MODULE_DISABLE,          enumvalue, "红外光模块失能");
         ENUM_NAME_VALUE_FEILD_STR_CASE(MOD_CMD_ID_BAND_IRLIGHT_850_SET_BRIGHT,          enumvalue, "红外光850亮度设置");
         ENUM_NAME_VALUE_FEILD_STR_CASE(MOD_CMD_ID_BAND_IRLIGHT_940_SET_BRIGHT,          enumvalue, "红外光940亮度设置");
-        ENUM_NAME_VALUE_FEILD_STR_CASE(PHYSICALKEY_ID_POWER,                            enumvalue, "开关按键");
+        ENUM_NAME_VALUE_FEILD_STR_CASE(PHYSICALKEY_ID_BOOT,                             enumvalue, "启动按键");
         ENUM_NAME_VALUE_FEILD_STR_CASE(PHYSICALKEY_ID_STOP,                             enumvalue, "停止按键");
         ENUM_NAME_VALUE_FEILD_STR_CASE(PHYSICALKEY_ID_RESET,                            enumvalue, "复位按键");
         ENUM_NAME_VALUE_FEILD_STR_CASE(PHYSICALKEY_ID_LOOSEN,                           enumvalue, "释放压脉按键");
@@ -759,8 +777,9 @@ inline string EnumStr(int enumvalue)
         ENUM_NAME_VALUE_FEILD_STR_CASE(PHYSICALKEY_ID_ULTR_CONNECT_VIRTUAL_KEY,         enumvalue, "超声连接/断开虚拟按键");
         ENUM_NAME_VALUE_FEILD_STR_CASE(PHYSICALKEY_ID_PUNC_POWER_VIRTUAL_KEY,           enumvalue, "穿刺开启/关闭虚拟按键");
         ENUM_NAME_VALUE_FEILD_STR_CASE(PHYSICALKEY_ID_REST_POWER_VIRTUAL_KEY,           enumvalue, "压脉开启/关闭虚拟按键");
-        ENUM_NAME_VALUE_FEILD_STR_CASE(MOD_CMD_ID_KEY_POWER_GET_STATUS,                 enumvalue, "开关按键状态");
-        ENUM_NAME_VALUE_FEILD_STR_CASE(MOD_CMD_ID_KEY_POWER_SET_STATUS,                 enumvalue, "开关按键按下");
+        ENUM_NAME_VALUE_FEILD_STR_CASE(PHYSICALKEY_ID_SHUTDOWN_FLAG_VIRTUAL_KEY,        enumvalue, "关机标记虚拟按键");
+        ENUM_NAME_VALUE_FEILD_STR_CASE(MOD_CMD_ID_KEY_BOOT_GET_STATUS,                  enumvalue, "启动按键状态");
+        ENUM_NAME_VALUE_FEILD_STR_CASE(MOD_CMD_ID_KEY_BOOT_SET_STATUS,                  enumvalue, "启动按键按下");
         ENUM_NAME_VALUE_FEILD_STR_CASE(MOD_CMD_ID_KEY_STOP_GET_STATUS,                  enumvalue, "停止按键状态");
         ENUM_NAME_VALUE_FEILD_STR_CASE(MOD_CMD_ID_KEY_STOP_SET_STATUS,                  enumvalue, "停止按键按下");
         ENUM_NAME_VALUE_FEILD_STR_CASE(MOD_CMD_ID_KEY_RESET_GET_STATUS,                 enumvalue, "复位按键状态");
@@ -777,11 +796,14 @@ inline string EnumStr(int enumvalue)
         ENUM_NAME_VALUE_FEILD_STR_CASE(MOD_CMD_ID_KEY_PUNC_POWER_SET_STATUS,            enumvalue, "穿刺开启/关闭");
         ENUM_NAME_VALUE_FEILD_STR_CASE(MOD_CMD_ID_KEY_REST_POWER_GET_STATUS,            enumvalue, "压脉开启状态");
         ENUM_NAME_VALUE_FEILD_STR_CASE(MOD_CMD_ID_KEY_REST_POWER_SET_STATUS,            enumvalue, "压脉开启/关闭");
+        ENUM_NAME_VALUE_FEILD_STR_CASE(MOD_CMD_ID_KEY_SHUTDOWN_FLAG_GET_STATUS,         enumvalue, "关机标记状态");
+        ENUM_NAME_VALUE_FEILD_STR_CASE(MOD_CMD_ID_KEY_SHUTDOWN_FLAG_SET_STATUS,         enumvalue, "关机标记设置");
         ENUM_NAME_VALUE_FEILD_STR_CASE(MOD_CMD_ID_LASERDISTANCE_GET_DISTANCE,           enumvalue, "获取激光测距的距离");
         ENUM_NAME_VALUE_FEILD_STR_CASE(SAMPLING_STOP_KEY_STOP,                          enumvalue, "停止按钮");
         ENUM_NAME_VALUE_FEILD_STR_CASE(SAMPLING_STOP_KEY_URGENTSTOP,                    enumvalue, "急停按钮");
         ENUM_NAME_VALUE_FEILD_STR_CASE(SAMPLING_STOP_KEY_RELEASE,                       enumvalue, "释放压脉按钮");
         ENUM_NAME_VALUE_FEILD_STR_CASE(SAMPLING_STOP_DEVICE_ERROR,                      enumvalue, "设备错误");
+        ENUM_NAME_VALUE_FEILD_STR_CASE(SAMPLING_GOINGPREPARE_UNKNOWN,                   enumvalue, "未知原因");
         ENUM_NAME_VALUE_FEILD_STR_CASE(SAMPLING_GOINGPREPARE_ENTER_SAMPLING,            enumvalue, "进入采血");
         ENUM_NAME_VALUE_FEILD_STR_CASE(SAMPLING_GOINGPREPARE_NO_COLOR_PICTURE,          enumvalue, "没彩图");
         ENUM_NAME_VALUE_FEILD_STR_CASE(SAMPLING_GOINGPREPARE_NO_IR_PICTURE,             enumvalue, "没红外图");
@@ -830,10 +852,14 @@ inline string EnumStrDescript(int enumvalue)
     switch (enumvalue)
     {
         ENUM_NAME_VALUE_FEILD_STR_CASE_DESCRIPT(MACHINE_STATE_UNKNOWN,                           enumvalue);
+        ENUM_NAME_VALUE_FEILD_STR_CASE_DESCRIPT(MACHINE_STATE_INITING,                           enumvalue, "状态机状态:初始化");
         ENUM_NAME_VALUE_FEILD_STR_CASE_DESCRIPT(MACHINE_STATE_IDLE,                              enumvalue, "状态机状态:空闲");
         ENUM_NAME_VALUE_FEILD_STR_CASE_DESCRIPT(MACHINE_STATE_ERROR,                             enumvalue, "状态机状态:错误");
         ENUM_NAME_VALUE_FEILD_STR_CASE_DESCRIPT(MACHINE_STATE_STOP,                              enumvalue, "状态机状态:停止");
         ENUM_NAME_VALUE_FEILD_STR_CASE_DESCRIPT(MACHINE_STATE_URGENTSTOP,                        enumvalue, "状态机状态:急停");
+        ENUM_NAME_VALUE_FEILD_STR_CASE_DESCRIPT(MACHINE_STATE_RESETING,                          enumvalue, "状态机状态:复位");
+        ENUM_NAME_VALUE_FEILD_STR_CASE_DESCRIPT(MACHINE_STATE_CANCEL,                            enumvalue, "状态机状态:取消");
+        ENUM_NAME_VALUE_FEILD_STR_CASE_DESCRIPT(MACHINE_STATE_EXIT_NEEDLE,                       enumvalue, "状态机状态:退针");
         ENUM_NAME_VALUE_FEILD_STR_CASE_DESCRIPT(MACHINE_STATE_PREPARE,                           enumvalue, "状态机状态:采血准备");
         ENUM_NAME_VALUE_FEILD_STR_CASE_DESCRIPT(MACHINE_STATE_BAND,                              enumvalue, "状态机状态:压脉带");
         ENUM_NAME_VALUE_FEILD_STR_CASE_DESCRIPT(MACHINE_STATE_IR,                                enumvalue, "状态机状态:红外图像");
@@ -892,6 +918,8 @@ inline string EnumStrDescript(int enumvalue)
         ENUM_NAME_VALUE_FEILD_STR_CASE_DESCRIPT(NIRDEVICE_OPERAID_CAPTURE,                       enumvalue, "近红外图像采集");
         ENUM_NAME_VALUE_FEILD_STR_CASE_DESCRIPT(NIRDEVICE_OPERAID_REQUEST_OPEN_LIGHT,            enumvalue, "近红外请求打开补光灯");
         ENUM_NAME_VALUE_FEILD_STR_CASE_DESCRIPT(NIRDEVICE_OPERAID_REQUEST_CLOSE_LIGHT,           enumvalue, "近红请求关闭补光灯");
+        ENUM_NAME_VALUE_FEILD_STR_CASE_DESCRIPT(NIRDEVICE_OPERAID_OPENED_LASER,                  enumvalue, "激光已打开");
+        ENUM_NAME_VALUE_FEILD_STR_CASE_DESCRIPT(NIRDEVICE_OPERAID_CLOSED_LASER,                  enumvalue, "激光已关闭");
         ENUM_NAME_VALUE_FEILD_STR_CASE_DESCRIPT(NIRDEVICE_FRAME_MODE_IR,                         enumvalue, "红外模式");
         ENUM_NAME_VALUE_FEILD_STR_CASE_DESCRIPT(NIRDEVICE_FRAME_MODE_DEPTH,                      enumvalue, "深度模式D2C模式");
         ENUM_NAME_VALUE_FEILD_STR_CASE_DESCRIPT(USERPERMISSION_OPERATOR,                         enumvalue, "操作员权限");
@@ -965,6 +993,7 @@ inline string EnumStrDescript(int enumvalue)
         ENUM_NAME_VALUE_FEILD_STR_CASE_DESCRIPT(MOD_CMD_ID_REST_MOTOR1_MODULE_GET_POS,           enumvalue, "电机1获取手把位置");
         ENUM_NAME_VALUE_FEILD_STR_CASE_DESCRIPT(MOD_CMD_ID_BAND_VERSION,                         enumvalue, "版本号");
         ENUM_NAME_VALUE_FEILD_STR_CASE_DESCRIPT(MOD_CMD_ID_BAND_BOARD_NAME,                      enumvalue, "板卡名");
+        ENUM_NAME_VALUE_FEILD_STR_CASE_DESCRIPT(MOD_CMD_ID_BAND_BOARD_RESET,                     enumvalue, "板卡复位");
         ENUM_NAME_VALUE_FEILD_STR_CASE_DESCRIPT(MOD_CMD_ID_BAND_MOTOR0_MODULE_ENABLE,            enumvalue, "电机0模块使能");
         ENUM_NAME_VALUE_FEILD_STR_CASE_DESCRIPT(MOD_CMD_ID_BAND_MOTOR0_MODULE_DISABLE,           enumvalue, "电机0模块失能");
         ENUM_NAME_VALUE_FEILD_STR_CASE_DESCRIPT(MOD_CMD_ID_BAND_MOTOR0_HOMING_ENABLE,            enumvalue, "电机0找零使能");
@@ -988,7 +1017,7 @@ inline string EnumStrDescript(int enumvalue)
         ENUM_NAME_VALUE_FEILD_STR_CASE_DESCRIPT(MOD_CMD_ID_BAND_MOTOR2_MODULE_ENABLE,            enumvalue, "电机2模块使能");
         ENUM_NAME_VALUE_FEILD_STR_CASE_DESCRIPT(MOD_CMD_ID_BAND_MOTOR2_MODULE_DISABLE,           enumvalue, "电机2模块失能");
         ENUM_NAME_VALUE_FEILD_STR_CASE_DESCRIPT(MOD_CMD_ID_BAND_MOTOR2_HOMING_ENABLE,            enumvalue, "电机2找零使能");
-        ENUM_NAME_VALUE_FEILD_STR_CASE_DESCRIPT(MOD_CMD_ID_BAND_MOTOR2_HOMING_DISABLE,           enumvalue, "电机2找零使能");
+        ENUM_NAME_VALUE_FEILD_STR_CASE_DESCRIPT(MOD_CMD_ID_BAND_MOTOR2_HOMING_DISABLE,           enumvalue, "电机2找零失能");
         ENUM_NAME_VALUE_FEILD_STR_CASE_DESCRIPT(MOD_CMD_ID_BAND_MOTOR2_MODULE_SET_POS_RANGE,     enumvalue, "电机2设置手把位置范围");
         ENUM_NAME_VALUE_FEILD_STR_CASE_DESCRIPT(MOD_CMD_ID_BAND_MOTOR2_MODULE_SET_POS,           enumvalue, "电机2设置手把位置");
         ENUM_NAME_VALUE_FEILD_STR_CASE_DESCRIPT(MOD_CMD_ID_BAND_MOTOR2_HOMING_GET_STATUS,        enumvalue, "电机2找零状态获取");
@@ -999,7 +1028,7 @@ inline string EnumStrDescript(int enumvalue)
         ENUM_NAME_VALUE_FEILD_STR_CASE_DESCRIPT(MOD_CMD_ID_BAND_IRLIGHT_MODULE_DISABLE,          enumvalue, "红外光模块失能");
         ENUM_NAME_VALUE_FEILD_STR_CASE_DESCRIPT(MOD_CMD_ID_BAND_IRLIGHT_850_SET_BRIGHT,          enumvalue, "红外光850亮度设置");
         ENUM_NAME_VALUE_FEILD_STR_CASE_DESCRIPT(MOD_CMD_ID_BAND_IRLIGHT_940_SET_BRIGHT,          enumvalue, "红外光940亮度设置");
-        ENUM_NAME_VALUE_FEILD_STR_CASE_DESCRIPT(PHYSICALKEY_ID_POWER,                            enumvalue, "开关按键");
+        ENUM_NAME_VALUE_FEILD_STR_CASE_DESCRIPT(PHYSICALKEY_ID_BOOT,                             enumvalue, "启动按键");
         ENUM_NAME_VALUE_FEILD_STR_CASE_DESCRIPT(PHYSICALKEY_ID_STOP,                             enumvalue, "停止按键");
         ENUM_NAME_VALUE_FEILD_STR_CASE_DESCRIPT(PHYSICALKEY_ID_RESET,                            enumvalue, "复位按键");
         ENUM_NAME_VALUE_FEILD_STR_CASE_DESCRIPT(PHYSICALKEY_ID_LOOSEN,                           enumvalue, "释放压脉按键");
@@ -1010,8 +1039,9 @@ inline string EnumStrDescript(int enumvalue)
         ENUM_NAME_VALUE_FEILD_STR_CASE_DESCRIPT(PHYSICALKEY_ID_ULTR_CONNECT_VIRTUAL_KEY,         enumvalue, "超声连接/断开虚拟按键");
         ENUM_NAME_VALUE_FEILD_STR_CASE_DESCRIPT(PHYSICALKEY_ID_PUNC_POWER_VIRTUAL_KEY,           enumvalue, "穿刺开启/关闭虚拟按键");
         ENUM_NAME_VALUE_FEILD_STR_CASE_DESCRIPT(PHYSICALKEY_ID_REST_POWER_VIRTUAL_KEY,           enumvalue, "压脉开启/关闭虚拟按键");
-        ENUM_NAME_VALUE_FEILD_STR_CASE_DESCRIPT(MOD_CMD_ID_KEY_POWER_GET_STATUS,                 enumvalue, "开关按键状态");
-        ENUM_NAME_VALUE_FEILD_STR_CASE_DESCRIPT(MOD_CMD_ID_KEY_POWER_SET_STATUS,                 enumvalue, "开关按键按下");
+        ENUM_NAME_VALUE_FEILD_STR_CASE_DESCRIPT(PHYSICALKEY_ID_SHUTDOWN_FLAG_VIRTUAL_KEY,        enumvalue, "关机标记虚拟按键");
+        ENUM_NAME_VALUE_FEILD_STR_CASE_DESCRIPT(MOD_CMD_ID_KEY_BOOT_GET_STATUS,                  enumvalue, "启动按键状态");
+        ENUM_NAME_VALUE_FEILD_STR_CASE_DESCRIPT(MOD_CMD_ID_KEY_BOOT_SET_STATUS,                  enumvalue, "启动按键按下");
         ENUM_NAME_VALUE_FEILD_STR_CASE_DESCRIPT(MOD_CMD_ID_KEY_STOP_GET_STATUS,                  enumvalue, "停止按键状态");
         ENUM_NAME_VALUE_FEILD_STR_CASE_DESCRIPT(MOD_CMD_ID_KEY_STOP_SET_STATUS,                  enumvalue, "停止按键按下");
         ENUM_NAME_VALUE_FEILD_STR_CASE_DESCRIPT(MOD_CMD_ID_KEY_RESET_GET_STATUS,                 enumvalue, "复位按键状态");
@@ -1028,11 +1058,14 @@ inline string EnumStrDescript(int enumvalue)
         ENUM_NAME_VALUE_FEILD_STR_CASE_DESCRIPT(MOD_CMD_ID_KEY_PUNC_POWER_SET_STATUS,            enumvalue, "穿刺开启/关闭");
         ENUM_NAME_VALUE_FEILD_STR_CASE_DESCRIPT(MOD_CMD_ID_KEY_REST_POWER_GET_STATUS,            enumvalue, "压脉开启状态");
         ENUM_NAME_VALUE_FEILD_STR_CASE_DESCRIPT(MOD_CMD_ID_KEY_REST_POWER_SET_STATUS,            enumvalue, "压脉开启/关闭");
+        ENUM_NAME_VALUE_FEILD_STR_CASE_DESCRIPT(MOD_CMD_ID_KEY_SHUTDOWN_FLAG_GET_STATUS,         enumvalue, "关机标记状态");
+        ENUM_NAME_VALUE_FEILD_STR_CASE_DESCRIPT(MOD_CMD_ID_KEY_SHUTDOWN_FLAG_SET_STATUS,         enumvalue, "关机标记设置");
         ENUM_NAME_VALUE_FEILD_STR_CASE_DESCRIPT(MOD_CMD_ID_LASERDISTANCE_GET_DISTANCE,           enumvalue, "获取激光测距的距离");
         ENUM_NAME_VALUE_FEILD_STR_CASE_DESCRIPT(SAMPLING_STOP_KEY_STOP,                          enumvalue, "停止按钮");
         ENUM_NAME_VALUE_FEILD_STR_CASE_DESCRIPT(SAMPLING_STOP_KEY_URGENTSTOP,                    enumvalue, "急停按钮");
         ENUM_NAME_VALUE_FEILD_STR_CASE_DESCRIPT(SAMPLING_STOP_KEY_RELEASE,                       enumvalue, "释放压脉按钮");
         ENUM_NAME_VALUE_FEILD_STR_CASE_DESCRIPT(SAMPLING_STOP_DEVICE_ERROR,                      enumvalue, "设备错误");
+        ENUM_NAME_VALUE_FEILD_STR_CASE_DESCRIPT(SAMPLING_GOINGPREPARE_UNKNOWN,                   enumvalue, "未知原因");
         ENUM_NAME_VALUE_FEILD_STR_CASE_DESCRIPT(SAMPLING_GOINGPREPARE_ENTER_SAMPLING,            enumvalue, "进入采血");
         ENUM_NAME_VALUE_FEILD_STR_CASE_DESCRIPT(SAMPLING_GOINGPREPARE_NO_COLOR_PICTURE,          enumvalue, "没彩图");
         ENUM_NAME_VALUE_FEILD_STR_CASE_DESCRIPT(SAMPLING_GOINGPREPARE_NO_IR_PICTURE,             enumvalue, "没红外图");

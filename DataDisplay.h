@@ -270,7 +270,9 @@ public:
         painter.drawEllipse(point.point, point.radius, point.radius);  // 绘制半径为50的圆
         pen.setColor(Qt::green);  // 蓝色
         painter.setPen(pen);
+#if 0
         painter.drawEllipse(point.point, 20,  20);  // 绿色圆，半径50，线宽2 //针的位置
+#endif
         if(point.blood_x != 0)
         {
             painter.drawLine(QPoint(point.blood_x, 0), QPoint(point.blood_x, pix.height()));
@@ -286,7 +288,9 @@ public:
         cv::Point center(/*200*/point.point.x(), /*200*/point.point.y());  // 图像中心坐标
         // 绘制一个圆 (中心点，半径，颜色，线宽)
         cv::circle(image, center, point.radius, cv::Scalar(255, 0, 0), 2);  // 绿色圆，半径50，线宽2
+#if 0
         cv::circle(image, center, 20, cv::Scalar(255, 0, 0), 4);  // 绿色圆，半径50，线宽2 //针的位置
+#endif
         if(point.blood_x != 0)
         {
             cv::line(mat, cv::Point(point.blood_x, 0), cv::Point(point.blood_x, mat.rows), cv::Scalar(255, 0, 0), 2, 2, 0);
@@ -410,7 +414,7 @@ public:
         int x = 10;
         int y = 20;
         QPainter painter(&pix);
-        painter.setFont(QFont("Arial", m_font_size));     // 设置字体和字号
+        painter.setFont(QFont("Arial", m_dc_font_scale));     // 设置字体和字号
 
         int textHeight = painter.fontMetrics().height();       // 文字高度
         int textWidth  = painter.fontMetrics().lineWidth();    // 文字宽度
@@ -509,7 +513,7 @@ public:
             point_y = y + (i % textRow) * textHeight;
             //cv::putText(mat, utf8tolocal(m_output_data.resultinfo[i]), cv::Point(x + textWidths, y + (i % textRow) * textHeight), fontFace, fontScale, fontColor, thickness);
             //putTextHusky(mat, utf8tolocal(m_output_data.resultinfo[i]).c_str(), cv::Point(x + textWidths, y + (i % textRow) * textHeight), Scalar(0, 255, 0), 20, "微软雅黑", false, false);
-            addTextToImage(mat, utf8tolocal(m_output_data.info[i]), cv::Point(x + textWidths, point_y), m_font_size, fontColor);
+            addTextToImage(mat, utf8tolocal(m_output_data.info[i]), cv::Point(x + textWidths, point_y), m_cv_font_scale, m_dc_font_scale, fontColor);
             textSize = cv::getTextSize(m_output_data.info[i].c_str(), fontFace, fontScale, thickness, &baseline);
             if(textWidth < textSize.width)
             {
@@ -529,7 +533,7 @@ public:
             point_y = y + (i % textRow) * textHeight;
             //cv::putText(mat, utf8tolocal(m_output_data.resultinfo[i]), cv::Point(x + textWidths, y + (i % textRow) * textHeight), fontFace, fontScale, fontColor, thickness);
             //putTextHusky(mat, utf8tolocal(m_output_data.resultinfo[i]).c_str(), cv::Point(x + textWidths, y + (i % textRow) * textHeight), Scalar(0, 255, 0), 20, "微软雅黑", false, false);
-            addTextToImage(mat, utf8tolocal(m_output_data.success_info[i]), cv::Point(x + textWidths, point_y), m_font_size, fontColor);
+            addTextToImage(mat, utf8tolocal(m_output_data.success_info[i]), cv::Point(x + textWidths, point_y), m_cv_font_scale, m_dc_font_scale, fontColor);
             textSize = cv::getTextSize(m_output_data.success_info[i].c_str(), fontFace, fontScale, thickness, &baseline);
             if(textWidth < textSize.width)
             {
@@ -549,7 +553,7 @@ public:
             point_y = y + (i % textRow) * textHeight;
             //cv::putText(mat, utf8tolocal(m_output_data.resultinfo[i]), cv::Point(x + textWidths, y + (i % textRow) * textHeight), fontFace, fontScale, fontColor, thickness);
             //putTextHusky(mat, utf8tolocal(m_output_data.fail_info[i]).c_str(), cv::Point(x + textWidths, y + (i % textRow) * textHeight), fontColor, m_font_size, "微软雅黑", false, false);
-            addTextToImage(mat, utf8tolocal(m_output_data.fail_info[i]), cv::Point(x + textWidths, point_y), m_font_size, fontColor);
+            addTextToImage(mat, utf8tolocal(m_output_data.fail_info[i]), cv::Point(x + textWidths, point_y), m_cv_font_scale, m_dc_font_scale, fontColor);
             textSize = cv::getTextSize(m_output_data.fail_info[i].c_str(), fontFace, fontScale, thickness, &baseline);
             if(textWidth < textSize.width)
             {
@@ -664,6 +668,40 @@ public:
         cv::line(image, cv::Point(x, 0), cv::Point(x, image.rows), cv::Scalar(0, 255, 0), 2); // 蓝色垂直线
     }
 
+    void drawExpectPoint(cv::Point expect_point, cv::Point actual_point, cv::Mat& mat)
+    {
+        int         fontFace  = cv::FONT_HERSHEY_SIMPLEX;
+        double      fontScale = 1;
+        int         thickness = 2;
+        cv::Scalar  fontColor = (255, 0, 0);  //# BGR格式，蓝色
+
+        // 创建一个空白图像（400x400，3通道，黑色背景）
+        cv::Mat& image = mat;//cv::Mat::zeros(400, 400, CV_8UC3);
+        // 定义中心点
+        //cv::Point center(/*200*/point.x, /*200*/point.y);  // 图像中心坐标
+        // 绘制一个圆 (中心点，半径，颜色，线宽)
+        cv::circle(image, expect_point, 2,  cv::Scalar(0, 255, 0), 4);  // 绿色圆，半径50，线宽2
+        cv::circle(image, expect_point, 20, cv::Scalar(0, 255, 0), 1);  // 绿色圆，半径50，线宽2
+        cv::circle(image, actual_point, 2,  cv::Scalar(255, 0, 0), 4);  // 蓝色圆，半径50，线宽2
+        cv::circle(image, actual_point, 20, cv::Scalar(255, 0, 0), 1);  // 蓝色圆，半径50，线宽2
+#if 0
+    if(ProjectIO::instance().getConfig().blood_center != 0)
+    {
+        cv::line(image, cv::Point(ProjectIO::instance().getConfig().blood_center, 0), cv::Point(ProjectIO::instance().getConfig().blood_center, image.rows), cv::Scalar(255, 0, 0), 2, 2, 0);
+    }
+    else
+    {
+        int blood_center = image.size().width / 2;
+        cv::line(image, cv::Point(blood_center, 0), cv::Point(blood_center, image.rows), cv::Scalar(255, 0, 0), 2, 2, 0);
+    }
+#endif
+        string expect_point_text = "(expect:" + to_string(expect_point.x/* * ULTRA_PHYSICAL_WIDTH_PIXEL*/) + "," + to_string(expect_point.y/* * ULTRA_PHYSICAL_WIDTH_PIXEL*/) + ")";
+        cv::putText(image, (expect_point_text).c_str(), cv::Point(expect_point.x - 250, expect_point.y + 40), fontFace, fontScale, cv::Scalar(0, 255, 0), thickness);
+        string actual_point_text = "(actual:" + to_string(actual_point.x/* * ULTRA_PHYSICAL_WIDTH_PIXEL*/) + "," + to_string(actual_point.y/* * ULTRA_PHYSICAL_WIDTH_PIXEL*/) + ")";
+        cv::putText(image, (actual_point_text).c_str(), cv::Point(actual_point.x/* - 200*/, actual_point.y + 40), fontFace, fontScale, cv::Scalar(255, 0, 0), thickness);
+    }
+
+
     QSize textSize(const QString& text)
     {
         QFont font("Arial", 20);
@@ -713,10 +751,52 @@ public:
         m_output_data.success_info.clear();
     }
 
+    double calcFontScaleFromPixelHeight(
+        int fontFace,
+        int thickness,
+        int targetPixelHeight
+        ) {
+        int baseline = 0;
+
+        // 先用 fontScale = 1.0 测一次
+        cv::Size sz = cv::getTextSize(
+            "Hg",           // 用有上下边界的字符
+            fontFace,
+            1.0,
+            thickness,
+            &baseline
+            );
+
+        return static_cast<double>(targetPixelHeight) / sz.height;
+    }
+#if 0
+/// test code
+int gdiFontPx = 36;   // 和 lfHeight 对齐
+int thickness = 2;
+int fontFace = cv::FONT_HERSHEY_SIMPLEX;
+
+double fontScale = calcFontScaleFromPixelHeight(
+    fontFace,
+    thickness,
+    gdiFontPx
+);
+
+cv::putText(
+    image,
+    actual_point_text,
+    cv::Point(actual_point.x, actual_point.y + 40),
+    fontFace,
+    fontScale,
+    cv::Scalar(255, 0, 0),
+    thickness
+);
+#endif
+
 
 private:
     mutex      m_output_display_mutex;
     OutputData m_output_data;  //< 在图像上输出的数据
-    const int  m_font_size = 16;
+    const int  m_cv_font_scale = 1;
+    const int  m_dc_font_scale = 16;
 };
 

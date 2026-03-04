@@ -181,7 +181,7 @@ inline std::shared_ptr<spdlog::logger> CreateLogger(const string & logger_name, 
     }
     logger->set_level(log_level);
     logger->set_pattern(log_pattern);
-    logger->info("logger created logger name:{}, log file path:{}", logger_name, file_path);
+    logger->info("logger created logger name:{}, log file path:{}", logger_name, localtoutf8(file_path));
 
     return logger;
 }
@@ -382,7 +382,7 @@ inline std::shared_ptr<spdlog::logger> CreateLoggerWithSplitFileByLogLevel(const
         }
     }
 
-    logger->info("logger created logger name:{}, log file path:{}", logger_name, file_path);
+    logger->info("logger created logger name:{}, log file path:{}", logger_name, localtoutf8(file_path));
 
     return logger;
 }

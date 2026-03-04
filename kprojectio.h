@@ -55,6 +55,8 @@ struct ConfigFile
     double coefficient_z = 5.0;           //< 当机械臂旋转角度修正左右评分时，机械臂向下步进距离的比例系数，默认值为5.0
     double deflection_deg = 5;            //< 贴合前，探头的偏转角度，防止穿刺机构碰撞前臂
     double deflection_deg_2 = 6;          //< 贴花前，防止穿刺机构碰撞上臂
+    double fit_blank_move_z = 0.4;        //< 贴到皮肤前机械臂下移步长,单位毫米
+    double fit_skin_move_z = 0.2;         //< 贴到皮肤后机械臂下移步长,单位毫米
     double x_offset     = 4;              //< 血管偏移4毫米 放弃穿刺
     bool ir_is_real = false;              //< 红外识别血管，显示图像是否实时，默认不用实时
     bool is_draw_blood_circle = false;    //< 是否绘画血管的红色圆圈和绿色的针的x坐标
@@ -184,9 +186,11 @@ public:
         , adjust_deg
         , AdjustAngle
         , coefficient_z
-        , x_offset
         , deflection_deg
         , deflection_deg_2
+        , fit_blank_move_z
+        , fit_skin_move_z
+        , x_offset
         , ir_is_real
         , is_draw_blood_circle
         , robotic_arm_speed

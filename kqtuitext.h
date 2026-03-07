@@ -137,6 +137,7 @@ public:
     inline static const char* 请消毒                      = QT_TR_NOOP("请消毒");
     inline static const char* 确定要退出采血                = QT_TR_NOOP("确定要退出采血");
     inline static const char* 取消                        = QT_TR_NOOP("取消");
+    inline static const char* 继续                        = QT_TR_NOOP("继续");
     inline static const char* 确定要关机                   = QT_TR_NOOP("确定要关机");
     inline static const char* 正在关机                     = QT_TR_NOOP("正在关机");
     inline static const char* 正在回到上针位置               = QT_TR_NOOP("正在回到上针位置");
@@ -156,6 +157,7 @@ public:
     inline static const char* 移动到途径点成功               = QT_TR_NOOP("移动到途径点成功");
     inline static const char* 采血针安装错误                 = QT_TR_NOOP("采血针安装错误");
     inline static const char* 设备正在初始化                 = QT_TR_NOOP("设备正在初始化");
+    inline static const char* 血管贴合位置有碰撞风险          = QT_TR_NOOP("血管贴合位置有碰撞风险,请选择其他血管");
 
     inline static const char* xxxxx                   = QT_TR_NOOP("xxxxx");
 };

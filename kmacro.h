@@ -24,7 +24,7 @@ using namespace std;
 #define SERIAL_TIMEOUT                    (1000)
 #define ANDROID_APP_PORT                  (6688)
 #define NIRDEVICE_FRAME_WAIT_TIME         (30)
-#define ARMRESTDEVICE_HANDLE_MAX_POS      (190)      //< 压脉把手最大距离209
+#define ARMRESTDEVICE_HANDLE_MAX_POS      (200)      //< 压脉把手最大距离209
 #define DEVICE_MOTOR_HOMING_TIMES         (12)       //< 电机找零次数
 #define DEVICE_MOTOR_MOVING_TIMES         (6)        //< 电机执行指令的次数
 #define DEVICE_MOTOR_ENABLED_TIME         (1000)     //< 电机使能后等待时间1秒

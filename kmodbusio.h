@@ -14,6 +14,7 @@
 #include <SetupAPI.h>
 #include <devguid.h>      // GUID_DEVCLASS_PORTS
 #include <regstr.h>
+#include <TcpPackage.h>
 #pragma comment(lib, "setupapi.lib")
 
 #include <vector>
@@ -143,17 +144,18 @@ public:
         m_device_type    = device_type;
         m_read_callback  = read_callback;
         m_error_callback = error_callback;
-        m_kserial        = new KSerialPort(std::bind(&KModbusIO::onRead, this, std::placeholders::_1), std::bind(&KModbusIO::onError, this, std::placeholders::_1, std::placeholders::_2));
+        m_serial = TcpLibrary::instance()->NewSerialPortk();
+        m_serial->RegisterHandler(nullptr, std::bind(&KModbusIO::onRead, this, std::placeholders::_1), std::bind(&KModbusIO::onError, this, std::placeholders::_1, std::placeholders::_2));
     }
 
     ~KModbusIO()
     {
         m_ktimer.CancelSleep();
         Close();
-        if(m_kserial)
+        if(m_serial)
         {
-            delete m_kserial;
-            m_kserial = nullptr;
+            TcpLibrary::instance()->DeleteSerialPortk(m_serial);
+            m_serial = nullptr;
         }
     }
 
@@ -164,11 +166,11 @@ public:
         do
         {
             m_com_port = com_port;
-            if(m_kserial)
+            if(m_serial)
             {
-                m_kserial->close();
+                m_serial->Disconnect();
             }
-            error_code = m_kserial->open(com_port.c_str());
+            error_code = m_serial->Connect(com_port.c_str());
             if(error_code)
             {
                 LOG_ERROR("打开串口:{} 失败", com_port);
@@ -181,9 +183,9 @@ public:
 
     int Close()
     {
-        if(m_kserial)
+        if(m_serial)
         {
-            m_kserial->close();
+            m_serial->Disconnect();
         }
         LOG_INFO("关闭串口:{}", m_com_port);
         return 0;
@@ -339,13 +341,13 @@ private:
         LOG_INFO("write serial data:{}", send_serial_data);
         if(response == nullptr)
         {
-            error_code = m_kserial->writeHexStr(StringToHexString(request.toStdString()));
+            error_code = m_serial->WriteHexStr(StringToHexString(request.toStdString()));
             std::this_thread::sleep_for(std::chrono::milliseconds(10));
         }
         else
         {
             string read_hexstr;
-            error_code = m_kserial->writeHexStr(StringToHexString(request.toStdString()), read_hexstr, SERIAL_TIMEOUT);
+            error_code = m_serial->WriteHexStr(StringToHexString(request.toStdString()), read_hexstr, SERIAL_TIMEOUT);
             if(error_code == 0 && !read_hexstr.empty())
             {
                 std::vector<std::byte> bytes = HexStringToBytes(read_hexstr);
@@ -658,10 +660,10 @@ public:
 
 
 private:
-    int          m_device_type = 0;
-    string       m_com_port;
-    KSerialPort* m_kserial = nullptr;
-    KTimer<>     m_ktimer;
+    int           m_device_type = 0;
+    string        m_com_port;
+    ISerialPortk* m_serial = nullptr;
+    KTimer<>      m_ktimer;
     ReadHexStrFunction  m_read_callback  = nullptr;
     SerialErrorFunction m_error_callback = nullptr;
 };

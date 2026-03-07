@@ -23,7 +23,6 @@
 #include "kprojectio.h"
 #include "kprojectfunction.h"
 #include "kutilityfunction.h"
-#include "KSerialPort.h"
 #include "kmodbusio.h"
 #include "DataDisplay.h"
 #include "kmsgui.h"
